@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Viral Duel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap">
+<style>
+:root{--bg:#E6EFEB;--ink:#14302E;--muted:#5A716E;--panel:#FFFFFF;--line:#C6D5CF;--teal:#0F7C7A;--glow:#FFB300;
+--red:#E03A3E;--blue:#2F6FDB;--green:#2E9E5B;--yellow:#D99A00;--wild:#8A4FD8;--treat:#4E6B68;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#10201F;--ink:#E4EFEB;--muted:#93ABA6;--panel:#1A2E2C;--line:#2E4744;--teal:#1FA3A0;--treat:#9DB7B3}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#10201F;--ink:#E4EFEB;--muted:#93ABA6;--panel:#1A2E2C;--line:#2E4744;--teal:#1FA3A0;--treat:#9DB7B3}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Baloo 2',ui-rounded,system-ui,sans-serif;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+#app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding:8px 10px;box-sizing:border-box}
+.zone{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px 8px 10px;display:flex;flex-direction:column;flex:1 1 0;min-height:0}
+.zone h2{margin:0 0 6px;font-size:15px;font-weight:700;display:flex;justify-content:space-between}
+.zone h2 span{color:var(--muted);font-weight:500}
+.backs{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}
+.backs i{width:11px;height:16px;border-radius:2px;background:var(--teal);display:block}
+.fly{position:fixed;z-index:20;pointer-events:none;transform-origin:center;filter:drop-shadow(0 8px 12px rgba(0,0,0,.3))}
+.fly .art,.flymini svg{width:100%;height:100%;display:block}
+.flymini{background:#fff;border-radius:50%}
+.fly .tags{position:absolute;left:0;right:0;bottom:3px;display:flex;justify-content:center;gap:2px}
+.fly .tags span{width:22px;height:22px;background:#fff;border-radius:50%;display:flex}
+.fly .tags svg{width:100%;height:100%}
+.flybody{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;filter:none}
+.body{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;align-content:center;flex:1;min-height:40px;container-type:size}
+.empty{color:var(--muted);font-size:14px;align-self:center}
+.slot{width:min(92px,calc((100cqw - 18px)/4),calc((100cqh - 4px)/1.4));position:relative;border-radius:8px;cursor:pointer}
+.five .slot{width:min(calc((100cqw - 24px)/5),calc((100cqh - 4px)/1.4))}
+.slot .art{width:100%;height:auto;display:block}
+.slot .tags{position:absolute;left:0;right:0;bottom:3px;display:flex;justify-content:center;gap:2px}
+.slot .tags span{width:min(22px,28%);height:auto;aspect-ratio:1;background:#fff;border-radius:50%;display:flex;box-shadow:0 1px 2px rgba(0,0,0,.35)}
+.slot .tags svg{width:100%;height:100%}
+.slot.infected .art{filter:saturate(.4) brightness(.8)}
+.slot.vaccinated{box-shadow:0 0 0 3px var(--teal)}
+.slot.immune{box-shadow:0 0 0 3px var(--panel),0 0 0 6px var(--teal)}
+.target{outline:3px solid var(--glow);outline-offset:2px;animation:pulse .8s infinite alternate}
+.picked{outline:3px solid var(--teal);outline-offset:2px}
+@keyframes pulse{to{outline-color:transparent}}
+@media (prefers-reduced-motion:reduce){.target{animation:none}}
+.mid{display:flex;align-items:center;gap:8px;padding:0 2px;height:64px;flex:none}
+.pile{font-size:13px;color:var(--muted);line-height:1.1;text-align:center;min-width:48px}
+.pile b{display:block;font-size:20px;color:var(--ink)}
+.hint{flex:1;text-align:center;font-size:14px;line-height:1.25;max-height:3.75em;overflow:hidden}
+.qbtn{flex:0 0 40px;height:40px;padding:0;border-radius:50%}
+.hand{display:flex;gap:8px;justify-content:center;align-items:flex-start;margin-top:10px;flex:none;height:calc(min(108px,(min(100vw,520px) - 36px)/3)*1.4)}
+.hcard{flex:1;max-width:108px;border-radius:10px;transition:transform .15s,filter .15s,opacity .15s;cursor:pointer}
+.hcard .art{width:100%;height:auto;display:block}
+.hcard.sel{transform:translateY(-12px);filter:drop-shadow(0 6px 0 var(--glow))}
+.hcard,.slot{-webkit-touch-callout:none;touch-action:manipulation}
+.hcard{touch-action:none}
+.hcard.lifted{opacity:.25;transform:none;filter:none}
+.drag-ghost{position:fixed;z-index:20;pointer-events:none;transform:translate(-50%,-55%) rotate(-5deg);filter:drop-shadow(0 10px 14px rgba(0,0,0,.35))}
+.drag-ghost .art{width:100%;display:block}
+.dropzone{outline:2px dashed var(--glow);outline-offset:-5px}
+.dropzone.hover{background:color-mix(in srgb,var(--glow) 18%,var(--panel))}
+.slot.hover{transform:scale(1.1);animation:none;outline-color:var(--glow)}
+.bin{display:flex;flex-direction:column;align-items:center;border-radius:10px;padding:2px 4px}
+.bin.hover{background:color-mix(in srgb,var(--red) 20%,transparent);color:var(--red)}
+.tip{position:fixed;z-index:10;max-width:250px;background:var(--ink);color:var(--bg);padding:10px 12px;border-radius:12px;font-size:15px;line-height:1.3;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.3);display:none}
+.log2{display:block;font-weight:700}
+.tip b{display:block;font-size:17px;margin-bottom:2px}
+.tip i{display:block;font-style:normal;margin-top:6px;opacity:.8}
+.hcard.dsel{opacity:.45;transform:scale(.94)}
+.actions{display:flex;gap:8px;margin-top:10px;flex:none}
+button{font:inherit;font-weight:700;font-size:16px;border:2px solid transparent;border-radius:12px;padding:11px 14px;background:var(--teal);color:#fff;flex:1;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+button:disabled{opacity:.4}
+button:focus-visible,.hcard:focus-visible,.slot:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
+.overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;z-index:5;overflow:auto}
+.overlay h1{font-size:44px;line-height:1;margin:0 0 10px;font-weight:800;letter-spacing:-.5px}
+.overlay p{max-width:32ch;margin:0 0 22px;color:var(--muted);font-size:17px;line-height:1.35}
+.overlay .log{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.overlay button{flex:none;min-width:240px;margin:5px}
+.germs{display:flex;gap:10px;margin-bottom:16px}
+.germs .art{width:58px;height:auto}
+.overlay.top{justify-content:flex-start}
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 6px;max-width:380px;margin:0 0 18px}
+.legend figure{margin:0;width:62px;font-size:12px;line-height:1.1;color:var(--muted)}
+.legend .art{width:50px;height:auto;display:block;margin:0 auto 3px}
+.rules{text-align:left;max-width:36ch;font-size:16px;line-height:1.4;margin:0 0 18px;padding-left:20px}
+.rules li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ---- Card data ----
+const COLORS=['red','blue','green','yellow'];
+const ORG={red:'Heart',blue:'Brain',green:'Stomach',yellow:'Bone',wild:'Wild organ'};
+const TREAT={
+  transplant:{n:'Transplant',g:'⇄',t:'Swap one organ with your rival'},
+  thief:{n:'Organ thief',g:'✋',t:'Steal an organ you don’t have'},
+  contagion:{n:'Contagion',g:'☣',t:'Pass your viruses to their clean organs'},
+  glove:{n:'Latex glove',g:'🧤',t:'Rival throws out their hand and misses a turn'},
+  error:{n:'Medical error',g:'⇆',t:'Swap whole bodies with your rival'}
+};
+// ---- Card art (60x84 cards, no text) ----
+const HEX={red:'#E03A3E',blue:'#2F6FDB',green:'#2E9E5B',yellow:'#E5A100',wild:'url(#rb)'};
+const INK='#1E2A32',TBG='#4B3F7A';
+// Per color: card light, card dark, organ light, organ dark, outline
+const PAL={red:['#F7676A','#A8172A','#FF9294','#C8202F','#6E0C15'],blue:['#5B9BF5','#1A47A8','#A6CAFF','#2F63D6','#13357E'],
+  green:['#52C987','#136B3A','#93E6B4','#23934F','#0F5229'],yellow:['#FFCD4A','#C27E00','#FFF4C9','#EDBE3A','#8A5D00'],wild:['#8B63EA','#2E1F70','#fff','#ddd','#555']};
+// Shared gradients and patterns, referenced by every card
+(()=>{
+  let d='<linearGradient id="rb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E03A3E"/><stop offset=".35" stop-color="#E5A100"/><stop offset=".65" stop-color="#2E9E5B"/><stop offset="1" stop-color="#2F6FDB"/></linearGradient>';
+  for(const [c,[a,b,oa,ob]] of Object.entries(PAL)){
+    d+=c==='wild'
+      ?'<linearGradient id="bg-wild" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E8454A"/><stop offset=".35" stop-color="#EBA514"/><stop offset=".65" stop-color="#2FA160"/><stop offset="1" stop-color="#2B62CF"/></linearGradient>'
+      :`<linearGradient id="bg-${c}" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+    d+=`<linearGradient id="og-${c}" x1=".1" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="${oa}"/><stop offset="1" stop-color="${ob}"/></linearGradient>`;
+    d+=`<radialGradient id="vg-${c}" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="${oa}"/><stop offset="1" stop-color="${b}"/></radialGradient>`;
+    d+=`<radialGradient id="glow-${c}"><stop offset="0" stop-color="${a}" stop-opacity=".55"/><stop offset="1" stop-color="${a}" stop-opacity="0"/></radialGradient>`;
+  }
+  d+='<radialGradient id="plate" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#ECE4D2"/></radialGradient>';
+  d+='<linearGradient id="vbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2D3A4A"/><stop offset="1" stop-color="#121820"/></linearGradient>';
+  d+='<linearGradient id="mbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DDE9E5"/></linearGradient>';
+  d+='<linearGradient id="tbg" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#7461C2"/><stop offset="1" stop-color="#2E2258"/></linearGradient>';
+  d+='<linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#D8E4E8"/></linearGradient>';
+  d+='<pattern id="dots" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r=".8" fill="#fff" fill-opacity=".16"/></pattern>';
+  const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('width','0');s.setAttribute('height','0');s.style.position='absolute';s.innerHTML=`<defs>${d}</defs>`;document.body.prepend(s);
+})();
+const shine=(x,y,rx,ry,a=20)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" opacity=".5" transform="rotate(${a} ${x} ${y})"/>`;
+// Organs drawn around (30,44), about 34px across
+const ORGAN_ART={
+  red:()=>`<path d="M24 32v-9" stroke="#3E6FD1" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M30 35v-9q0-6 6-6t6 6v5" fill="none" stroke="#C8202F" stroke-width="5" stroke-linecap="round"/>
+    <path d="M34 21v-4M38.5 21v-4" stroke="#C8202F" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M19 43c-1-8 5-12 11-10 3-3 9-4 12 0 4 5 3 13-1 19-3 5-7 9-11 13-6-5-10-13-11-22Z" fill="url(#og-red)" stroke="#6E0C15" stroke-width="1.2"/>
+    <path d="M30 34c-2 9-1 18 1 25M33 37q6 1 7 7" fill="none" stroke="#6E0C15" stroke-width="1" opacity=".55"/>${shine(24,41,2.4,5)}`,
+  blue:()=>`<path d="M31 51q0 6 3 11" stroke="#2F63D6" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+    <path d="M35 50c0 6 9 7 12 1-1-3-5-4-9-3Z" fill="url(#og-blue)" stroke="#13357E" stroke-width="1"/>
+    <path d="M14 44c-3-9 4-17 12-17 4-4 12-4 15 1 6 1 9 7 7 13 2 5-2 10-8 10H21c-4 0-6-3-7-7Z" fill="url(#og-blue)" stroke="#13357E" stroke-width="1.2"/>
+    <g fill="none" stroke="#13357E" stroke-width="1.1" opacity=".6" stroke-linecap="round"><path d="M18 38q2-4 5-1t5-1 5 1 5-1 5 2"/><path d="M17 45q3-3 6 0t6-1"/><path d="M33 44q3-3 6 0t6 0"/><path d="M23 31q3-2 5 1t5-1 5 1"/><path d="M22 48q7-6 15-3"/></g>${shine(21,35,2.2,4,-30)}`,
+  green:()=>`<path d="M33.5 15v13" stroke="#23934F" stroke-width="5.5" stroke-linecap="round"/>
+    <path d="M51.5 50q5 5 1.5 12" stroke="#23934F" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M31 27C26 21 15 23 15 34c0 13 7 25 18 25 8 0 13-4 15-8l4 1 1-5-5-1c-3 2-8 3-12 1-4-2-4-8-1-13 1-2 2-4 1-6Z" fill="url(#og-green)" stroke="#0F5229" stroke-width="1.2" stroke-linejoin="round"/>
+    <g stroke="#0F5229" opacity=".45" fill="none" stroke-width="1" stroke-linecap="round"><path d="M19 36q5 3 7 9"/><path d="M19 44q6 3 9 10"/><path d="M26 50q6 3 12 2"/></g>${shine(20,31,2.2,4.5,30)}`,
+  yellow:()=>`<g transform="rotate(-40 30 44)"><path d="M12 38a5.5 5.5 0 0 1 9.5-2q1.5 2 3.5 3h10q2-1 3.5-3a5.5 5.5 0 0 1 9.5 2 5 5 0 0 1-2 6 5 5 0 0 1 2 6 5.5 5.5 0 0 1-9.5 2q-1.5-2-3.5-3H25q-2 1-3.5 3a5.5 5.5 0 0 1-9.5-2 5 5 0 0 1 2-6 5 5 0 0 1-2-6Z" fill="url(#og-yellow)" stroke="#8A5D00" stroke-width="1.2"/>
+    <path d="M24 42h12" stroke="#fff" stroke-width="1.6" opacity=".7" stroke-linecap="round"/><path d="M15 37.5a2 2 0 0 1 3-1M42 37.5a2 2 0 0 1 3 1" stroke="#fff" stroke-width="1.3" fill="none" opacity=".7"/></g>`,
+  // Universal organ: a whole body holding all four organs
+  wild:()=>`<g transform="translate(30 44) scale(1.12) translate(-30 -44)"><circle cx="30" cy="25.2" r="5.3" fill="#fff" stroke="#3D4A5C" stroke-width="1.1"/>
+    <path d="M28.5 30v2.2C24 32.5 21 33 20 35.5L18.2 49.5Q18.3 51.8 20.2 51.6Q21.6 51.4 21.8 49.6L23 38.5L23.6 47L24 63Q24.1 64.5 25.6 64.5H27.8Q29.2 64.5 29.2 63L29.6 51Q30 50 30.4 51L30.8 63Q30.8 64.5 32.2 64.5H34.4Q35.9 64.5 36 63L36.4 47L37 38.5L38.2 49.6Q38.4 51.4 39.8 51.6Q41.7 51.8 41.8 49.5L40 35.5C39 33 36 32.5 31.5 32.2V30Z" fill="#fff" stroke="#3D4A5C" stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M27.2 27c-1.3-.3-1.7-2.3-.5-3 .1-1.6 2-2.3 3.2-1.4 1.1-1 3.1-.4 3.2 1.2 1.2.6 1 2.6-.3 3.2Z" fill="#2F63D6"/><path d="M30 22.8v4M28 25q1-.6 1.8 0M30.8 24.4q1-.6 1.8 0" stroke="#fff" stroke-width=".5" fill="none"/>
+    <path d="M32 40.4c-1.5-1.1-3-2.5-3-3.9a1.5 1.5 0 0 1 3-.6 1.5 1.5 0 0 1 3 .6c0 1.4-1.5 2.8-3 3.9Z" fill="#E03A3E"/>
+    <path d="M31.6 41.6c-1.8 0-2.9 1.4-2.7 3 .2 1.5 1.6 2.4 3.2 2.2 1.3-.2 2.2-.9 2.7-1.9l-1.3-.6c-.6.6-1.5.9-2.1.4-.6-.5 0-1.4.2-2.1.1-.5 0-.9 0-1Z" fill="#2E9E5B"/>
+    <g fill="#E5A100"><path d="M26.6 53.5v8M33.4 53.5v8" stroke="#E5A100" stroke-width="1.4" stroke-linecap="round"/><circle cx="26" cy="53.2" r=".9"/><circle cx="27.2" cy="53.2" r=".9"/><circle cx="26" cy="61.8" r=".9"/><circle cx="27.2" cy="61.8" r=".9"/><circle cx="32.8" cy="53.2" r=".9"/><circle cx="34" cy="53.2" r=".9"/><circle cx="32.8" cy="61.8" r=".9"/><circle cx="34" cy="61.8" r=".9"/></g></g>`
+};
+const PLATE=(ring='#fff')=>`<circle cx="30" cy="43" r="24" fill="url(#plate)" stroke="${ring}" stroke-width="2"/>`;
+// Corner badge on viruses and medicine: which organ it fits
+const badge=c=>`<circle cx="12" cy="13" r="9.5" fill="url(#plate)" stroke="${c==='wild'?'url(#rb)':PAL[c][1]}" stroke-width="1.5"/><g transform="translate(3 -0.2) scale(.3)">${ORGAN_ART[c]()}</g>`;
+const n1=x=>x.toFixed(1);
+// Grumpy germ with shading
+function germ(cx,cy,r,f){
+  let s='';
+  for(let k=0;k<10;k++){const a=k*Math.PI/5+.2,c=Math.cos(a),n=Math.sin(a),x=n1(cx+(r+6)*c),y=n1(cy+(r+6)*n);
+    s+=`<line x1="${n1(cx+r*c)}" y1="${n1(cy+r*n)}" x2="${x}" y2="${y}" stroke="${f}" stroke-width="2.6" stroke-linecap="round"/><circle cx="${x}" cy="${y}" r="2.8" fill="${f}"/>`}
+  return s+`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${f}"/>
+  <circle cx="${cx-r*.45}" cy="${cy+r*.45}" r="${r*.16}" fill="#000" opacity=".15"/><circle cx="${cx+r*.55}" cy="${cy-r*.5}" r="${r*.12}" fill="#000" opacity=".15"/>
+  <circle cx="${cx-5}" cy="${cy-1}" r="3.4" fill="#fff"/><circle cx="${cx+5}" cy="${cy-1}" r="3.4" fill="#fff"/>
+  <circle cx="${cx-4.3}" cy="${cy}" r="1.7" fill="${INK}"/><circle cx="${cx+4.3}" cy="${cy}" r="1.7" fill="${INK}"/>
+  <path d="M${cx-9} ${cy-7.5}l7 3M${cx+9} ${cy-7.5}l-7 3M${cx-5} ${cy+7}q5-4 10 0" stroke="${INK}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  ${shine(cx-r*.45,cy-r*.55,r*.22,r*.12,-35)}`;
+}
+const syringe=c=>`<g transform="rotate(-45 30 46)">
+  <line x1="5" y1="46" x2="16" y2="46" stroke="#8A9A98" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="15" y="44" width="3" height="4" fill="#9AA8A6"/>
+  <rect x="17" y="38.5" width="26" height="15" rx="3" fill="url(#glass)" stroke="#2A3B3A" stroke-width="1.6"/>
+  <rect x="19" y="40.5" width="16" height="11" rx="1.5" fill="${c==='wild'?'url(#rb)':`url(#og-${c})`}"/>
+  <path d="M22 38.5v4M26 38.5v5M30 38.5v4M34 38.5v5" stroke="#2A3B3A" stroke-width="1"/>
+  <rect x="19.5" y="41.5" width="15" height="2" rx="1" fill="#fff" opacity=".55"/>
+  <rect x="35" y="40.5" width="2.5" height="11" fill="#5E6E6C"/>
+  <line x1="37.5" y1="46" x2="50" y2="46" stroke="#5E6E6C" stroke-width="3"/>
+  <rect x="49" y="39" width="4" height="14" rx="2" fill="#2A3B3A"/>
+  <rect x="42" y="36" width="3" height="20" rx="1.5" fill="#2A3B3A"/></g>`;
+const TREAT_ART={
+  transplant:`<g fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"><path d="M14 40a16 16 0 0 1 25-13"/><path d="M46 46a16 16 0 0 1-25 13"/></g><path fill="#fff" d="M44 22l-1 11-9-6Z"/><path fill="#fff" d="M16 64l1-11 9 6Z"/><g transform="translate(18.6 28) scale(.38)">${ORGAN_ART.red()}</g>`,
+  thief:`<path fill="#fff" d="M9 34q21-10 42 0 2 12-7 14-8 2-14-5-6 7-14 5-9-2-7-14Z"/><ellipse cx="21" cy="39" rx="5" ry="3.5" fill="#2E2258"/><ellipse cx="39" cy="39" rx="5" ry="3.5" fill="#2E2258"/><path d="M9 35l-5-5M9 37l-5 3" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><g transform="translate(19.5 46) scale(.35)">${ORGAN_ART.red()}</g>`,
+  contagion:`<circle cx="30" cy="44" r="21" fill="#B8F15A" opacity=".12"/><g fill="none" stroke="#B8F15A" stroke-width="3.5"><circle cx="30" cy="34" r="9"/><circle cx="21" cy="50" r="9"/><circle cx="39" cy="50" r="9"/></g><circle cx="30" cy="44.5" r="4" fill="#B8F15A"/>`,
+  glove:`<g fill="#CFEAFF" stroke="#8FB9D9" stroke-width="1"><rect x="11" y="41" width="6" height="15" rx="3" transform="rotate(-40 14 48)"/><rect x="19" y="24" width="5.5" height="22" rx="2.75"/><rect x="25.5" y="19" width="5.5" height="26" rx="2.75"/><rect x="32" y="21" width="5.5" height="24" rx="2.75"/><rect x="38" y="27" width="5" height="18" rx="2.5"/><rect x="19" y="40" width="24" height="20" rx="6"/></g><rect x="20" y="58" width="22" height="9" rx="2" fill="#fff"/><path d="M23 30v6M29 26v8" stroke="#fff" stroke-width="1.3" opacity=".7" stroke-linecap="round"/>`,
+  error:`<g fill="#fff"><circle cx="17" cy="38" r="5"/><rect x="10" y="45" width="14" height="17" rx="7"/><circle cx="43" cy="38" r="5"/><rect x="36" y="45" width="14" height="17" rx="7"/></g><g fill="none" stroke="#FFD166" stroke-width="3" stroke-linecap="round"><path d="M16 27q14-12 28 0"/><path d="M44 70q-14 10-28 0"/></g><path d="M48 31l-2-9-6 5Z" fill="#FFD166"/><path d="M12 66l2 9 6-5Z" fill="#FFD166"/>`
+};
+// Card frame: gradient face, dot texture, inner rule, top gloss
+const frame=(bg,rule,dots=true)=>`<rect x="1" y="1" width="58" height="82" rx="7" fill="${bg}"/>${dots?'<rect x="1" y="1" width="58" height="82" rx="7" fill="url(#dots)"/>':''}<rect x="4" y="4" width="52" height="76" rx="5" fill="none" stroke="${rule}" stroke-opacity=".6"/><path d="M8 1h44a7 7 0 0 1 7 7v14Q30 30 1 22V8a7 7 0 0 1 7-7Z" fill="#fff" opacity=".08"/>`;
+function cardSVG(c){
+  const col=c.color;let body;
+  if(c.type==='organ')body=frame(`url(#bg-${col})`,'#fff')+PLATE('#fff')+ORGAN_ART[col]();
+  else if(c.type==='virus')body=frame('url(#vbg)',col==='wild'?'#fff':PAL[col][0],false)+`<circle cx="30" cy="46" r="26" fill="url(#glow-${col})"/>`+germ(30,46,11,col==='wild'?'url(#rb)':`url(#vg-${col})`)+badge(col);
+  else if(c.type==='med')body=frame('url(#mbg)',col==='wild'?'#8B63EA':PAL[col][1],false)+`<circle cx="30" cy="46" r="24" fill="url(#glow-${col})" opacity=".6"/>`+syringe(col)+`<path d="M44 68h8M48 64v8" stroke="${col==='wild'?'url(#rb)':PAL[col][1]}" stroke-width="3" stroke-linecap="round"/>`+badge(col);
+  else body=frame('url(#tbg)','#fff')+`<circle cx="30" cy="44" r="24" fill="#fff" opacity=".08"/>`+TREAT_ART[c.kind];
+  return `<svg class="art" viewBox="0 0 60 84" role="img" aria-label="${cardName(c)}">${body}</svg>`;
+}
+// Small chips stacked on organs in a body
+function mini(c){
+  const f=HEX[c.color];
+  if(c.type==='virus'){let s='';for(let k=0;k<6;k++){const a=k*Math.PI/3,x=n1(10+7.5*Math.cos(a)),y=n1(10+7.5*Math.sin(a));s+=`<line x1="10" y1="10" x2="${x}" y2="${y}" stroke="${f}" stroke-width="2"/><circle cx="${x}" cy="${y}" r="1.8" fill="${f}"/>`}return `<svg viewBox="0 0 20 20">${s}<circle cx="10" cy="10" r="5" fill="${f}"/></svg>`}
+  return `<svg viewBox="0 0 20 20"><g transform="rotate(-45 10 10)"><rect x="2.5" y="6.5" width="15" height="7" rx="3.5" fill="#fff" stroke="${f}" stroke-width="1.5"/><path d="M6 6.5h4v7H6a3.5 3.5 0 0 1 0-7Z" fill="${f}"/></g></svg>`;
+}
+function cardName(c){
+  if(c.type==='organ')return ORG[c.color];
+  if(c.type==='treat')return TREAT[c.kind].n;
+  const w=c.color==='wild';
+  return c.type==='virus'?(w?'Wild virus':ORG[c.color]+' virus'):(w?'Wild medicine':ORG[c.color]+' medicine');
+}
+
+// ---- Game state ----
+let S;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const P=i=>S&&S.ai?(i?'Computer':'You'):`Player ${i+1}`;
+const their=i=>S.ai?(i?'its':'your'):'their';
+const poss=i=>S.ai&&i===0?'your':`${P(i)}’s`;
+const obj=i=>S.ai&&i===0?'you':P(i);
+const view=()=>S.ai?0:S.cur; // whose side the screen shows
+function buildDeck(){
+  const d=[];
+  for(const c of COLORS){for(let i=0;i<5;i++)d.push({type:'organ',color:c});for(let i=0;i<4;i++){d.push({type:'virus',color:c});d.push({type:'med',color:c})}}
+  d.push({type:'organ',color:'wild'},{type:'virus',color:'wild'});
+  for(let i=0;i<4;i++)d.push({type:'med',color:'wild'});
+  [['transplant',3],['thief',3],['contagion',2],['glove',1],['error',1]].forEach(([k,n])=>{for(let i=0;i<n;i++)d.push({type:'treat',color:'treat',kind:k})});
+  d.forEach((c,n)=>c.id=n); // ids let organs animate between redraws
+  return shuffle(d); // 68 cards
+}
+function newGame(ai){
+  S={ai,deck:buildDeck(),discard:[],pl:[{hand:[],body:[],skip:false},{hand:[],body:[],skip:false}],cur:0,sel:null,mode:null,dsel:new Set(),tp:null,skipping:false,log:ai?'You go first.':'Player 1 goes first.',screen:ai?'play':'pass'};
+  draw(S.pl[0]);draw(S.pl[1]);render();
+}
+function draw(p){
+  while(p.hand.length<3){
+    if(!S.deck.length){if(!S.discard.length)break;S.deck=shuffle(S.discard);S.discard=[]}
+    p.hand.push(S.deck.pop());
+  }
+}
+const me=()=>S.pl[S.cur], opp=()=>S.pl[1-S.cur];
+const immune=s=>s.m.length>=2;
+const matches=(card,s)=>card.color==='wild'||s.card.color==='wild'||card.color===s.card.color;
+const canAttach=(card,s)=>!immune(s)&&matches(card,s);
+const hasColor=(p,c,except)=>p.body.some(s=>s!==except&&s.card.color===c);
+const healthy=p=>p.body.filter(s=>!s.v.length).length;
+function transplantOK(a,b){
+  if(immune(a)||immune(b))return false;
+  const ca=a.card.color,cb=b.card.color;
+  return ca===cb||(!hasColor(me(),cb,a)&&!hasColor(opp(),ca,b));
+}
+
+// Which slots / buttons are valid for the selected card
+function targets(){
+  const T={mine:[],opp:[],use:null,hint:''};
+  if(S.sel===null)return T;
+  const c=me().hand[S.sel],m=me(),o=opp(),on=P(1-S.cur);
+  if(c.type==='organ'){
+    if(hasColor(m,c.color))T.hint=`You already have a ${ORG[c.color].toLowerCase()}.`;
+    else{T.use='Place organ';T.hint='Drop it on your body.'}
+  }else if(c.type==='virus'){
+    o.body.forEach((s,i)=>canAttach(c,s)&&T.opp.push(i));
+    T.hint=T.opp.length?`Drop it on a glowing organ of ${on}.`:'No organ it can infect right now.';
+  }else if(c.type==='med'){
+    m.body.forEach((s,i)=>canAttach(c,s)&&T.mine.push(i));
+    T.hint=T.mine.length?'Drop it on one of your glowing organs.':'None of your organs can take it.';
+  }else{
+    const k=c.kind;
+    if(k==='transplant'){
+      if(S.tp===null){m.body.forEach((s,i)=>o.body.some(b=>transplantOK(s,b))&&T.mine.push(i));T.hint=T.mine.length?'Drop it on your organ to give away.':'No swap is possible.'}
+      else{o.body.forEach((b,i)=>transplantOK(m.body[S.tp],b)&&T.opp.push(i));T.hint='Now drag it onto their organ to take.'}
+    }else if(k==='thief'){
+      o.body.forEach((s,i)=>!immune(s)&&!hasColor(m,s.card.color)&&T.opp.push(i));
+      T.hint=T.opp.length?'Drop it on the organ to steal.':'Nothing you can steal.';
+    }else{T.use='Use card';T.hint=TREAT[k].t+'. Drop it on the board.'}
+  }
+  return T;
+}
+
+// ---- Actions ----
+function takeSel(){const c=me().hand.splice(S.sel,1)[0];return c}
+function endTurn(){
+  if(S.sim)return; // AI look-ahead: stop here
+  draw(me());
+  if(healthy(me())>=4){S.screen='win';S.winner=S.cur;render();return}
+  S.cur=1-S.cur;S.sel=null;S.mode=null;S.tp=null;S.dsel.clear();S.skipping=false;
+  if(S.ai){
+    if(S.cur){S.screen='ai';render();const g=S;setTimeout(()=>{if(S===g)aiTurn()},600);return}
+    S.screen='play';const p=me();if(p.skip){p.skip=false;S.skipping=true}
+    return render();
+  }
+  S.screen='pass';render();
+}
+const orgLabel=s=>ORG[s.card.color].toLowerCase();
+function playOnSlot(owner,i){
+  const c=me().hand[S.sel],T=targets();
+  const list=owner===0?T.mine:T.opp; if(!list.includes(i))return;
+  const n=P(S.cur),on=P(1-S.cur),m=me(),o=opp();
+  if(c.type==='transplant'||c.kind==='transplant'){
+    if(S.tp===null){S.tp=i;render();return}
+    takeSel();const a=m.body[S.tp],b=o.body[i];m.body[S.tp]=b;o.body[i]=a;S.discard.push(c);
+    S.log=`${n} swapped ${their(S.cur)} ${orgLabel(a)} for ${poss(1-S.cur)} ${orgLabel(b)}.`;return endTurn();
+  }
+  takeSel();
+  if(c.kind==='thief'){const s=o.body.splice(i,1)[0];m.body.push(s);S.discard.push(c);S.log=`${n} stole ${poss(1-S.cur)} ${orgLabel(s)}.`;return endTurn()}
+  if(c.type==='virus'){
+    const s=o.body[i];
+    if(s.m.length){S.discard.push(s.m.pop(),c);S.log=`${n} wiped out the medicine on ${poss(1-S.cur)} ${orgLabel(s)}.`}
+    else if(s.v.length){o.body.splice(i,1);S.discard.push(s.card,...s.v,c);S.log=`${n} destroyed ${poss(1-S.cur)} ${orgLabel(s)}!`}
+    else{s.v.push(c);S.log=`${n} infected ${poss(1-S.cur)} ${orgLabel(s)}.`}
+  }else{
+    const s=m.body[i];
+    if(s.v.length){S.discard.push(s.v.pop(),c);S.log=`${n} cured ${their(S.cur)} ${orgLabel(s)}.`}
+    else{s.m.push(c);S.log=s.m.length>1?`${n} made ${their(S.cur)} ${orgLabel(s)} immune.`:`${n} vaccinated ${their(S.cur)} ${orgLabel(s)}.`}
+  }
+  endTurn();
+}
+function useCard(){
+  const c=takeSel(),n=P(S.cur),on=P(1-S.cur),m=me(),o=opp();
+  if(c.type==='organ'){m.body.push({card:c,v:[],m:[]});S.log=`${n} added a ${ORG[c.color].toLowerCase()}.`;return endTurn()}
+  S.discard.push(c);
+  if(c.kind==='contagion'){
+    let moved=0;
+    m.body.forEach(s=>{
+      if(s.v.length!==1||s.m.length)return;
+      const t=o.body.find(b=>!b.v.length&&!b.m.length&&matches(s.v[0],b));
+      if(t){t.v.push(s.v.pop());moved++}
+    });
+    S.log=moved?`${n} spread ${moved} virus${moved>1?'es':''} to ${obj(1-S.cur)}.`:`${n} played contagion, but nothing spread.`;
+  }else if(c.kind==='glove'){S.discard.push(...o.hand);o.hand=[];o.skip=true;S.log=`${n} used a latex glove. ${S.ai&&S.cur?'You lose your hand and miss':`${on} loses ${S.ai?'its':'their'} hand and misses`} a turn.`}
+  else if(c.kind==='error'){[m.body,o.body]=[o.body,m.body];S.log=`${n} swapped whole bodies with ${obj(1-S.cur)}!`}
+  endTurn();
+}
+
+// ---- Computer player ----
+// Board score: healthy organs count most, protected ones a bit more
+function val(p){let v=0;p.body.forEach(s=>v+=s.v.length?15:s.m.length>=2?135:s.m.length?118:100);if(healthy(p)>=4)v+=100000;return v}
+function evalState(i){const a=S.pl[i],b=S.pl[1-i];let sc=val(a)-1.15*val(b);if(b.skip)sc+=40+20*healthy(b);return sc}
+function moves(){
+  const out=[];
+  me().hand.forEach((c,i)=>{
+    S.sel=i;S.tp=null;const T=targets();
+    if(c.kind==='transplant'){T.mine.forEach(a=>{S.tp=a;targets().opp.forEach(b=>out.push({i,tp:a,slot:[1,b]}))})}
+    else{T.mine.forEach(j=>out.push({i,slot:[0,j]}));T.opp.forEach(j=>out.push({i,slot:[1,j]}));if(T.use)out.push({i,use:1})}
+  });
+  S.sel=null;S.tp=null;return out;
+}
+function doMove(mv){S.sel=mv.i;S.tp=mv.tp??null;mv.slot?playOnSlot(mv.slot[0],mv.slot[1]):useCard()}
+// Try a move on a copy of the game and score the result
+function simulate(mv){
+  const real=S;S=JSON.parse(JSON.stringify(real));S.dsel=new Set();S.sim=true;
+  doMove(mv);const sc=evalState(real.cur);S=real;return sc;
+}
+// Decide what to do: {skip}, {mv} or {discard:[hand indexes]}
+function aiPlan(){
+  const p=me();
+  if(p.skip||S.skipping)return {skip:1};
+  const base=evalState(S.cur),all=moves();let best=null,bs=-Infinity;
+  for(const mv of all){const sc=simulate(mv)-(p.hand[mv.i].color==='wild'?8:0);if(sc>bs){bs=sc;best=mv}}
+  if(best&&bs-base>5)return {mv:best};
+  // Nothing useful: throw away unplayable cards, else one non-wild card
+  let idx=p.hand.map((c,i)=>i).filter(i=>!all.some(mv=>mv.i===i));
+  if(!idx.length)idx=[Math.max(0,p.hand.findIndex(c=>c.color!=='wild'))];
+  return {discard:idx};
+}
+function aiExec(pl){
+  const p=me();
+  if(pl.skip){p.skip=false;S.log=`${P(S.cur)} missed a turn and drew a new hand.`;return endTurn()}
+  if(pl.mv)return doMove(pl.mv);
+  pl.discard.sort((a,b)=>b-a).forEach(k=>S.discard.push(...p.hand.splice(k,1)));
+  S.log=`${P(S.cur)} discarded ${pl.discard.length} card${pl.discard.length>1?'s':''}.`;endTurn();
+}
+function aiMove(){aiExec(aiPlan())}
+
+// ---- Computer move animations ----
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const CARD_BACK=`<svg class="art" viewBox="0 0 60 84"><rect x="1.5" y="1.5" width="57" height="81" rx="7" fill="#0F7C7A" stroke="#0A5856" stroke-width="3"/>${germ(30,42,9,'#9FE3DA')}</svg>`;
+const rect=el=>el.getBoundingClientRect();
+const slotEl=(o,i)=>document.querySelector(`.slot[data-o="${o}"][data-i="${i}"]`);
+const cardBox=(r,w)=>({left:r.left+r.width/2-w/2,top:r.top+r.height/2-w*.7,width:w,height:w*1.4}); // card-shaped, centered on r
+const sq=(r,s)=>({left:r.left+r.width/2-s/2,top:r.top+r.height/2-s/2,width:s,height:s});
+const $=q=>document.querySelector(q);
+function srcRect(k){const b=document.querySelectorAll('.backs i'),el=b[k]||b[b.length-1];return el?rect(el):cardBox({left:innerWidth/2,top:0,width:0,height:0},40)}
+// Move a copy of some art from one box to another, then fade it out
+function fly(html,from,to,{dur=650,cls='',hold=0,keep=false}={}){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)dur=1;
+  const el=document.createElement('div');el.className='fly '+cls;el.innerHTML=html;
+  Object.assign(el.style,{left:from.left+'px',top:from.top+'px',width:from.width+'px',height:from.height+'px'});
+  document.body.appendChild(el);
+  const dx=to.left+to.width/2-from.left-from.width/2,dy=to.top+to.height/2-from.top-from.height/2,s=to.width/from.width;
+  return el.animate([{transform:'none'},{transform:`translate(${dx}px,${dy}px) scale(${s})`}],{duration:dur,easing:'cubic-bezier(.3,.7,.3,1)',fill:'forwards'}).finished
+    .then(()=>wait(hold)).then(()=>keep?el:fadeOut(el));
+}
+const fadeOut=el=>el.animate([{opacity:1},{opacity:0}],{duration:200,fill:'forwards'}).finished.then(()=>el.remove());
+async function animatePlan(pl){
+  if(pl.skip)return;
+  const bin=rect($('.bin')),hide=el=>el&&(el.style.visibility='hidden');
+  if(pl.discard){
+    await Promise.all(pl.discard.map((k,n)=>wait(n*150).then(()=>fly(CARD_BACK,srcRect(k),cardBox(bin,24),{dur:550}))));
+    return;
+  }
+  const mv=pl.mv,c=me().hand[mv.i],sw=($('.slot')||{}).offsetWidth||72;
+  const aiBody=$('.zone:not(.mine) .body'),youBody=$('.zone.mine .body');
+  // On screen the computer's side is data-o="1", yours is data-o="0"
+  let to;
+  if(mv.slot)to=rect(slotEl(mv.slot[0]===0?1:0,mv.slot[1]));
+  else if(c.type==='organ'){
+    // Reserve the organ's final spot first, sliding the others aside, then fly there
+    const ph=document.createElement('div');ph.className='slot';ph.style.cssText='visibility:hidden;aspect-ratio:60/84';
+    const b=snap(aiBody);aiBody.querySelector('.empty')?.remove();
+    if(aiBody.querySelectorAll('.slot').length>=4)aiBody.classList.add('five');
+    aiBody.appendChild(ph);flipFrom(b,aiBody,false);to=rect(ph);
+  }
+  else to=cardBox(rect($('.mid')),sw*1.3);
+  // 1. The played card flies out face up
+  // Keep the card on screen until the board redraws underneath it
+  pl.el=await fly(cardSVG(c),srcRect(mv.i),to,{dur:700,hold:c.type==='treat'?450:120,keep:true});
+  // 2. Viruses or hand cards move (swaps and steals slide in the redraw)
+  const k=c.kind,jobs=[];
+  if(k==='contagion'){
+    // Same pairing as useCard: each infected organ passes its virus to one clean match
+    const used=new Set();
+    me().body.forEach((s,i)=>{
+      if(s.v.length!==1||s.m.length)return;
+      const j=opp().body.findIndex((b,jj)=>!used.has(jj)&&!b.v.length&&!b.m.length&&matches(s.v[0],b));
+      if(j<0)return;used.add(j);
+      jobs.push(fly(mini(s.v[0]),sq(rect(slotEl(1,i)),26),sq(rect(slotEl(0,j)),26),{cls:'flymini',dur:750,hold:150}));
+    });
+  }else if(k==='glove'){
+    document.querySelectorAll('.hcard').forEach((h,n)=>{const r=rect(h);jobs.push(wait(n*120).then(()=>fly(h.innerHTML,r,cardBox(bin,24),{dur:550})));hide(h)});
+  }
+  await Promise.all(jobs);
+}
+async function aiTurn(){
+  const g=S;
+  while(S.screen==='rules')await wait(300);
+  if(S!==g||S.screen!=='ai'||S.cur!==1)return;
+  const pl=aiPlan();
+  await animatePlan(pl);
+  while(S.screen==='rules')await wait(300);
+  if(S!==g)return;
+  S.landed=!!(pl.mv&&me().hand[pl.mv.i].type==='organ'); // card already flew in, no pop
+  aiExec(pl);
+  if(pl.el)fadeOut(pl.el);
+}
+const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function snap(root){const m=new Map();root.querySelectorAll('.slot[data-k]').forEach(el=>m.set(el.dataset.k,{r:rect(el),html:el.innerHTML}));return m}
+// Slide each organ from where it was to where it is now (FLIP)
+function flipFrom(before,root,pop){
+  if(RM())return;const seen=new Set();
+  root.querySelectorAll('.slot[data-k]').forEach(el=>{
+    const k=el.dataset.k,o=before.get(k),n=rect(el);seen.add(k);
+    if(o){
+      const dx=o.r.left-n.left,dy=o.r.top-n.top,s=o.r.width/n.width;
+      if(Math.abs(dx)+Math.abs(dy)>1||Math.abs(s-1)>.02){el.style.transformOrigin='top left';el.animate([{transform:`translate(${dx}px,${dy}px) scale(${s})`},{transform:'none'}],{duration:450,easing:'cubic-bezier(.3,.7,.3,1)'})}
+    }else if(pop)el.animate([{transform:'scale(.6)',opacity:0},{transform:'none',opacity:1}],{duration:300,easing:'ease-out'});
+  });
+  // Organs that vanished (destroyed) fade out where they stood
+  before.forEach((o,k)=>{
+    if(seen.has(k))return;
+    const g=document.createElement('div');g.className='fly';g.innerHTML=o.html;
+    Object.assign(g.style,{left:o.r.left+'px',top:o.r.top+'px',width:o.r.width+'px',height:o.r.height+'px'});document.body.appendChild(g);
+    g.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(.7) rotate(-8deg)'}],{duration:450,easing:'ease-in'}).finished.then(()=>g.remove());
+  });
+}
+
+// ---- Render ----
+function slotHTML(s,owner,i,T){
+  const st=s.v.length?'infected':immune(s)?'immune':s.m.length?'vaccinated':'healthy';
+  const tgt=(owner===0?T.mine:T.opp).includes(i),picked=owner===0&&S.tp===i;
+  const tags=[...s.v,...s.m].map(x=>`<span>${mini(x)}</span>`).join('');
+  return `<div class="slot ${st} ${tgt?'target':''} ${picked?'picked':''}" data-a="slot" data-k="${s.card.id}" data-o="${owner}" data-i="${i}" ${tgt?'role="button" tabindex="0"':''}>${cardSVG(s.card)}<span class="tags">${tags}</span></div>`;
+}
+function handHTML(c,i){
+  const cls=S.mode==='discard'?(S.dsel.has(i)?'dsel':''):(S.sel===i?(S.dragging?'sel lifted':'sel'):'');
+  return `<div class="hcard ${cls}" data-a="hand" data-i="${i}" role="button" tabindex="0">${cardSVG(c)}</div>`;
+}
+const LEGEND=[...COLORS.map(c=>({type:'organ',color:c})),{type:'organ',color:'wild'},{type:'virus',color:'red'},{type:'med',color:'red'},...Object.keys(TREAT).map(k=>({type:'treat',color:'treat',kind:k}))];
+function render(){
+  const app=document.getElementById('app');
+  if(S.screen==='start'){app.innerHTML=`<div class="overlay"><div class="germs">${[{type:'organ',color:'red'},{type:'virus',color:'blue'},{type:'med',color:'green'},{type:'treat',color:'treat',kind:'glove'}].map(c=>cardSVG(c)).join('')}</div><h1>Viral Duel</h1><p>Build four healthy organs before your rival does. Play the computer, or pass the phone to a friend.</p><button data-a="start1">1 player vs computer</button><button data-a="start2">2 players, one phone</button><button class="ghost" data-a="rules">How to play</button></div>`;return}
+  if(S.screen==='rules'){app.innerHTML=`<div class="overlay top"><h1>How to play</h1><div class="legend">${LEGEND.map(c=>`<figure>${cardSVG(c)}<figcaption>${c.type==='virus'?'Virus':c.type==='med'?'Medicine':cardName(c)}</figcaption></figure>`).join('')}</div><ol class="rules">
+    <li>The badge in a virus or medicine corner shows which organ it fits.</li>
+    <li>Win by having 4 healthy organs at the end of your turn.</li>
+    <li>Each turn, play one card or discard any number. You refill to 3.</li>
+    <li>Organs go in your body, one of each kind. The star organ is wild.</li>
+    <li>A virus on a rival organ infects it. A second virus destroys it.</li>
+    <li>Medicine cures a virus, vaccinates, or (twice) makes an organ immune for good.</li>
+    <li>Viruses and medicine must match the organ’s color, unless one is wild.</li>
+    <li>Treatments break the rules: swap, steal, spread, or wipe hands.</li></ol>
+    <button data-a="back">Got it</button></div>`;return}
+  if(S.screen==='pass'){app.innerHTML=`<div class="overlay"><p class="log">${S.log}</p><h1>Pass to ${P(S.cur)}</h1><p>Hand the phone over. Keep your cards hidden.</p><button data-a="reveal">I’m ${P(S.cur)}, show my cards</button></div>`;return}
+  if(S.screen==='win'){app.innerHTML=`<div class="overlay"><div class="germs">${COLORS.map(c=>cardSVG({type:'organ',color:c})).join('')}</div><h1>${S.ai?(S.winner?'Computer wins':'You win!'):P(S.winner)+' wins!'}</h1><p>Four healthy organs. Perfect bill of health.</p><button data-a="again">Play again</button><button class="ghost" data-a="menu">Main menu</button></div>`;return}
+
+  const hadBoard=!!app.querySelector('.body'),before=snap(app);
+  const vi=view(),myTurn=vi===S.cur,m=S.pl[vi],o=S.pl[1-vi];
+  const T=(S.mode==='discard'||!myTurn)?{mine:[],opp:[]}:targets();
+  const dz=!!(S.dragging&&T.use),dzOpp=dz&&m.hand[S.sel].type==='treat';
+  let hint=!myTurn?'<span class="log2">Computer is thinking…</span>':S.skipping?'Your hand was thrown out. You miss this turn.':S.mode==='discard'?'Tap cards to throw away, then confirm.':S.sel!==null?`<b>${cardName(me().hand[S.sel])}</b>. ${T.hint}`:(S.ai&&S.log?`<span class="log2">${S.log}</span>`:'');
+  let acts;
+  if(!myTurn)acts=`<button disabled>Computer’s turn</button>`;
+  else if(S.skipping)acts=`<button data-a="skipEnd">End turn</button>`;
+  else if(S.mode==='discard')acts=`<button class="ghost" data-a="cancel">Cancel</button><button data-a="discardGo" ${S.dsel.size?'':'disabled'}>Discard ${S.dsel.size||''}</button>`;
+  else acts=`<button class="ghost" data-a="discardMode">Discard several cards</button>`;
+  const html=`
+  <section class="zone ${dzOpp?'dropzone':''}" ${dzOpp?'data-drop="use"':''}><h2>${P(1-vi)} <span>${healthy(o)}/4 healthy<span class="backs" aria-label="${o.hand.length} cards in hand">${'<i></i>'.repeat(o.hand.length)}</span></span></h2>
+    <div class="body ${o.body.length>4?'five':''}">${o.body.length?o.body.map((s,i)=>slotHTML(s,1,i,T)).join(''):'<span class="empty">No organs yet</span>'}</div></section>
+  <div class="mid"><div class="pile"><b>${S.deck.length}</b>deck</div><div class="hint" aria-live="polite">${hint}</div><div class="pile bin ${S.dragging?'dropzone':''}" data-drop="bin"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>discard</div><button class="ghost qbtn" data-a="rules" aria-label="How to play">?</button></div>
+  <section class="zone mine ${dz?'dropzone':''}" ${dz?'data-drop="use"':''}><h2>${S.ai?'You':'You, '+P(vi)} <span>${healthy(m)}/4 healthy</span></h2>
+    <div class="body ${m.body.length>4?'five':''}">${m.body.length?m.body.map((s,i)=>slotHTML(s,0,i,T)).join(''):'<span class="empty">Play organs here</span>'}</div></section>
+  <div class="hand">${m.hand.map(handHTML).join('')}</div>
+  <div class="actions">${acts}</div>`;
+  if(S.dragging&&app.querySelector('.hand')){
+    // Mid-drag: refresh the board but keep the hand, so the dragged card keeps its touch
+    const tmp=document.createElement('div');tmp.innerHTML=html;
+    const news=[...tmp.children];
+    [...app.children].forEach((el,k)=>{if(!el.classList.contains('hand'))el.replaceWith(news[k])});
+    app.querySelectorAll('.hcard').forEach((h,k)=>{h.classList.toggle('sel',k===S.sel);h.classList.toggle('lifted',k===S.sel)});
+  }else app.innerHTML=html;
+  flipFrom(before,app,hadBoard&&!S.landed);S.landed=false;
+}
+
+// ---- Input ----
+function onAct(t){
+  const a=t.dataset.a,i=+t.dataset.i;
+  if(a==='start1'||a==='start2'){newGame(a==='start1');return}
+  if(a==='again'){newGame(S.ai);return}
+  if(a==='menu'){S={screen:'start'};return render()}
+  if(a==='rules'){S.prev=S.screen;S.screen='rules';return render()}
+  if(a==='back'){S.screen=S.prev||'start';return render()}
+  if(a==='reveal'){S.screen='play';const p=me();if(p.skip){p.skip=false;S.skipping=true}return render()}
+  if(a==='skipEnd'){S.log=`${P(S.cur)} missed a turn and drew a new hand.`;return endTurn()}
+  if(S.skipping)return;
+  if(a==='hand'){
+    if(S.mode==='discard'){S.dsel.has(i)?S.dsel.delete(i):S.dsel.add(i)}
+    else return;
+    return render();
+  }
+  if(a==='slot'&&S.sel!==null&&S.mode!=='discard')return playOnSlot(+t.dataset.o,i);
+  if(a==='use')return useCard();
+  if(a==='discardMode'){S.mode='discard';S.sel=null;S.tp=null;S.dsel.clear();return render()}
+  if(a==='cancel'){S.mode=null;S.dsel.clear();return render()}
+  if(a==='discardGo'){
+    const n=S.dsel.size;[...S.dsel].sort((x,y)=>y-x).forEach(k=>S.discard.push(...me().hand.splice(k,1)));
+    S.mode=null;S.dsel.clear();S.log=`${P(S.cur)} discarded ${n} card${n>1?'s':''}.`;return endTurn();
+  }
+}
+// ---- Long-press tooltip ----
+function info(c){
+  const w=c.color==='wild',org=w?'organ of any kind':(ORG[c.color]||'').toLowerCase();
+  if(c.type==='organ')return w?'Counts as any one organ. Viruses and medicine of every color fit it.':`Add it to your body. You can hold only one ${org}. Get 4 healthy organs to win.`;
+  if(c.type==='virus')return `Play on a rival’s ${org}. Infects a healthy organ, destroys an infected one, or cancels one medicine. Can’t touch immune organs.`;
+  if(c.type==='med')return `Play on your own ${org}. Cures a virus, vaccinates a healthy organ, or makes a vaccinated organ immune for good.`;
+  return {transplant:'Swap one of your organs, with everything on it, for one of your rival’s. Immune organs can’t move, and no one may end up with two of the same organ.',
+    thief:'Take one of your rival’s organs, with everything on it. It must be one you don’t have, and not immune.',
+    contagion:'Move the viruses on your infected organs onto your rival’s clean organs of matching color.',
+    glove:'Your rival throws away their whole hand and misses their next turn.',
+    error:'Swap your entire body with your rival’s.'}[c.kind];
+}
+const STATUS={healthy:'Healthy.',infected:'Infected: one more virus destroys it.',vaccinated:'Vaccinated: blocks one virus.',immune:'Immune: nothing can affect it.'};
+const tip=document.createElement('div');tip.className='tip';document.body.appendChild(tip);
+let lpTimer=null,lpFired=false,lpX=0,lpY=0;
+function showTip(t){
+  const i=+t.dataset.i;let c,extra='';
+  if(t.classList.contains('hcard'))c=S.pl[view()].hand[i];
+  else{const s=S.pl[t.dataset.o==='0'?view():1-view()].body[i];c=s.card;const st=s.v.length?'infected':immune(s)?'immune':s.m.length?'vaccinated':'healthy';extra=`<i>${STATUS[st]}</i>`}
+  if(!c)return;
+  tip.innerHTML=`<b>${cardName(c)}</b>${info(c)}${extra}`;tip.style.display='block';
+  const r=t.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;
+  let x=Math.min(Math.max(8,r.left+r.width/2-tw/2),innerWidth-tw-8),y=r.top-th-10;
+  if(y<8)y=r.bottom+10;
+  tip.style.left=x+'px';tip.style.top=y+'px';
+}
+function hideTip(){clearTimeout(lpTimer);tip.style.display='none'}
+document.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.hcard,.slot');if(!t||(S.screen!=='play'&&S.screen!=='ai'))return;
+  lpFired=false;lpX=e.clientX;lpY=e.clientY;clearTimeout(lpTimer);
+  lpTimer=setTimeout(()=>{if(!(D&&D.active)){lpFired=true;showTip(t)}},450);
+});
+// Finger wobble is ignored; only a real drag (below) cancels the hold
+['pointerup','pointercancel','scroll'].forEach(ev=>document.addEventListener(ev,hideTip,true));
+document.addEventListener('contextmenu',e=>{if(e.target.closest('.hcard,.slot'))e.preventDefault()});
+// A long-press shouldn't also count as a tap
+// ---- Drag and drop ----
+let D=null,dragEnded=false,hoverEl=null;
+function dropTarget(x,y){
+  const el=document.elementFromPoint(x,y);if(!el)return null;
+  return el.closest('.slot.target')||el.closest('[data-drop]');
+}
+document.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.hcard');
+  if(!t||S.screen!=='play'||S.skipping||S.mode==='discard')return;
+  document.querySelectorAll('.drag-ghost').forEach(g=>g.remove()); // clear any stray ghost
+  try{t.setPointerCapture(e.pointerId)}catch(_){}
+  D={i:+t.dataset.i,x:e.clientX,y:e.clientY,active:false,w:t.offsetWidth};
+});
+document.addEventListener('pointermove',e=>{
+  if(!D)return;
+  if(!D.active){
+    if(Math.hypot(e.clientX-D.x,e.clientY-D.y)<14)return;
+    D.active=true;hideTip();
+    if(S.sel!==D.i)S.tp=null;
+    S.sel=D.i;S.dragging=true;render();
+    D.g=document.createElement('div');D.g.className='drag-ghost';D.g.style.width=D.w+'px';
+    D.g.innerHTML=cardSVG(me().hand[D.i]);document.body.appendChild(D.g);
+  }
+  D.g.style.left=e.clientX+'px';D.g.style.top=e.clientY+'px';
+  const h=dropTarget(e.clientX,e.clientY);
+  if(h!==hoverEl){hoverEl&&hoverEl.classList.remove('hover');hoverEl=h;h&&h.classList.add('hover')}
+});
+function endDrag(e,cancel){
+  if(!D)return;const d=D;D=null;
+  if(!d.active)return;
+  d.g.remove();hoverEl=null;S.dragging=false;dragEnded=true;setTimeout(()=>dragEnded=false,60);
+  const t=cancel?null:dropTarget(e.clientX,e.clientY);
+  if(t&&t.classList.contains('slot'))return playOnSlot(+t.dataset.o,+t.dataset.i);
+  if(t&&t.dataset.drop==='use')return useCard();
+  if(t&&t.dataset.drop==='bin'){S.discard.push(me().hand.splice(d.i,1)[0]);S.log=`${P(S.cur)} discarded 1 card.`;return endTurn()}
+  // Missed: keep a half-done transplant, otherwise drop the selection
+  if(!(S.tp!==null&&S.sel===d.i)){S.sel=null;S.tp=null}
+  render();
+}
+document.addEventListener('pointerup',e=>endDrag(e,false));
+document.addEventListener('pointercancel',e=>endDrag(e,true));
+document.addEventListener('lostpointercapture',e=>endDrag(e,true),true);
+document.addEventListener('click',e=>{if(lpFired||dragEnded){lpFired=false;dragEnded=false;return}const t=e.target.closest('[data-a]');if(t)onAct(t)});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.a&&e.target.tagName!=='BUTTON'){e.preventDefault();onAct(e.target)}});
+S={screen:'start'};render();
+</script>
+</body>
+</html>
