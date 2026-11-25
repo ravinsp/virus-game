@@ -6,12 +6,14 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <title>Viral Duel</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap">
+<script>/* Apply a saved light/dark choice before the page draws, so it doesn't flash. No saved choice = follow the device. */
+try{const t=localStorage.getItem('viralDuelTheme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
-:root{--bg:#E6EFEB;--ink:#14302E;--muted:#5A716E;--panel:#FFFFFF;--line:#C6D5CF;--teal:#0F7C7A;--glow:#FFB300;
+:root{--bg:#E6EFEB;--ink:#14302E;--muted:#5A716E;--panel:#FFFFFF;--line:#C6D5CF;--teal:#0F7C7A;--online:#16698F;--glow:#FFB300;
 --red:#E03A3E;--blue:#2F6FDB;--green:#2E9E5B;--yellow:#D99A00;--wild:#8A4FD8;--treat:#4E6B68;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#10201F;--ink:#E4EFEB;--muted:#93ABA6;--panel:#1A2E2C;--line:#2E4744;--teal:#1FA3A0;--treat:#9DB7B3}}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#10201F;--ink:#E4EFEB;--muted:#93ABA6;--panel:#1A2E2C;--line:#2E4744;--teal:#1FA3A0;--treat:#9DB7B3}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#10201F;--ink:#E4EFEB;--muted:#93ABA6;--panel:#1A2E2C;--line:#2E4744;--teal:#1FA3A0;--online:#2A8FB8;--treat:#9DB7B3}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#10201F;--ink:#E4EFEB;--muted:#93ABA6;--panel:#1A2E2C;--line:#2E4744;--teal:#1FA3A0;--online:#2A8FB8;--treat:#9DB7B3}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:'Baloo 2',ui-rounded,system-ui,sans-serif;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 #app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding:8px 10px;box-sizing:border-box}
@@ -76,6 +78,19 @@ button:focus-visible,.hcard:focus-visible,.slot:focus-visible{outline:3px solid 
 .overlay p{max-width:32ch;margin:0 0 22px;color:var(--muted);font-size:17px;line-height:1.35}
 .overlay .log{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
 .overlay button{flex:none;min-width:min(240px,100% - 10px);max-width:calc(100% - 10px);margin:5px}
+/* Main menu game-mode buttons: icon pinned left so icons line up, text stays centered */
+.overlay button.mode{position:relative;width:min(270px,100% - 10px);padding-left:44px;padding-right:44px}
+.mode svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mode svg .dot{fill:currentColor;stroke:none}
+.overlay button.mode.online{background:var(--online)} /* online: a bluer shade of the teal */
+/* Light/dark switch under the main menu: sun, sliding track, moon */
+.overlay button.theme{display:inline-flex;align-items:center;gap:8px;min-width:0;margin-top:16px;padding:6px 10px;background:transparent;border:none;color:var(--muted);font-size:14px}
+.theme svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.theme .track{position:relative;width:36px;height:20px;border-radius:10px;background:var(--line);transition:background .2s}
+.theme .track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .2s}
+.theme[aria-checked="true"] .track{background:var(--teal)}
+.theme[aria-checked="true"] .track::after{transform:translateX(16px)}
+@media (prefers-reduced-motion:reduce){.theme .track,.theme .track::after{transition:none}}
 .germs{display:flex;justify-content:center;gap:min(10px,2.5vw);margin-bottom:16px;max-width:100%}
 /* One row of cards that shrink on narrow screens instead of wrapping */
 .germs>*{flex:0 1 58px;min-width:0}
@@ -107,6 +122,13 @@ button:focus-visible,.hcard:focus-visible,.slot:focus-visible{outline:3px solid 
 .overlay .stats button{min-width:0;width:100%;margin:0;padding:8px}
 .overlay .stats button.warn{background:var(--red);border-color:var(--red);color:#fff}
 .overlay p.tally{color:var(--ink);font-weight:700;margin-top:-10px}
+/* Online play: room name display and entry */
+.overlay h1.code{font-size:min(56px,10vw);letter-spacing:.12em;overflow-wrap:anywhere}
+.overlay p.label{margin:0 0 4px;font-size:15px}
+.overlay p.err{color:var(--red);margin:4px 0 8px;font-size:15px}
+.code-in{font:inherit;font-weight:800;font-size:28px;letter-spacing:.12em;text-transform:uppercase;text-align:center;width:min(260px,100% - 10px);box-sizing:border-box;padding:6px 12px;margin:5px;border:2px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);-webkit-user-select:text;user-select:text}
+.code-in:focus{outline:3px solid var(--glow);outline-offset:2px}
+.code-in::placeholder{color:var(--muted);opacity:.5}
 </style>
 </head>
 <body>
@@ -364,11 +386,11 @@ function cardName(c){
 }
 
 // ---- Win stats ----
-// Kept in this browser only. Each mode stores [wins for player 1 / you, wins for player 2 / computer].
+// Kept in this browser only. Each mode stores [wins for player 1 / you, wins for player 2 / rival].
 const STATS_KEY='viralDuelStats';
-const MODES={ai:{t:'1 player vs computer',n:['You','Computer']},duo:{t:'2 players',n:['Player 1','Player 2']}};
+const MODES={ai:{t:'1 player vs computer',n:['You','Computer']},duo:{t:'2 players',n:['Player 1','Player 2']},net:{t:'Online',n:['You','Rival']}};
 function loadStats(){
-  const st={ai:[0,0],duo:[0,0]};
+  const st={ai:[0,0],duo:[0,0],net:[0,0]};
   try{const saved=JSON.parse(localStorage.getItem(STATS_KEY))||{};for(const m in st)if(Array.isArray(saved[m]))st[m]=[+saved[m][0]||0,+saved[m][1]||0]}catch(e){}
   return st;
 }
@@ -384,12 +406,21 @@ function statsCard(mode,st){
 
 // ---- Game state ----
 let S;
-const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
-const P=i=>S&&S.ai?(i?'Computer':'You'):`Player ${i+1}`;
-const their=i=>S.ai?(i?'its':'your'):'their';
-const poss=i=>S.ai&&i===0?'your':`${P(i)}’s`;
-const obj=i=>S.ai&&i===0?'you':P(i);
-const view=()=>S.ai?0:S.cur; // whose side the screen shows
+// Online games share a seed so both browsers shuffle the same way (S.rs is the seeded generator's state)
+function rnd(){
+  if(!S||S.rs==null)return Math.random();
+  let t=S.rs=(S.rs+0x6D2B79F5)|0; // mulberry32
+  t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);
+  return ((t^t>>>14)>>>0)/4294967296;
+}
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rnd()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const P=i=>S&&S.ai?(i?'Computer':'You'):S&&S.online?(i===S.seat?'You':'Rival'):`Player ${i+1}`;
+const isMe=i=>S.ai?i===0:S.online?i===S.seat:false; // is player i the person at this screen?
+const their=i=>isMe(i)?'your':S.ai?'its':'their';
+const poss=i=>isMe(i)?'your':`${P(i)}’s`;
+const obj=i=>isMe(i)?'you':P(i);
+const view=()=>S.ai?0:S.online?S.seat:S.cur; // whose side the screen shows
+const statMode=()=>S.ai?'ai':S.online?'net':'duo';
 function buildDeck(){
   const d=[];
   for(const c of COLORS){for(let i=0;i<5;i++)d.push({type:'organ',color:c});for(let i=0;i<4;i++){d.push({type:'virus',color:c});d.push({type:'med',color:c})}}
@@ -399,8 +430,12 @@ function buildDeck(){
   d.forEach((c,n)=>c.id=n); // ids let organs animate between redraws
   return shuffle(d); // 68 cards
 }
-function newGame(ai){
-  S={ai,deck:buildDeck(),discard:[],pl:[{hand:[],body:[],skip:false},{hand:[],body:[],skip:false}],cur:0,sel:null,mode:null,dsel:new Set(),tp:null,skipping:false,log:ai?'You go first.':'Player 1 goes first.',screen:ai?'play':'pass'};
+// net (online only): {seat: 0 host / 1 guest, seed, first: who starts}
+function newGame(ai,net){
+  S={ai,online:!!net,seat:net?net.seat:0,gid:net?net.seed:0,rs:net?net.seed:null,deck:[],discard:[],pl:[{hand:[],body:[],skip:false},{hand:[],body:[],skip:false}],cur:net?net.first:0,turn:0,sel:null,mode:null,dsel:new Set(),tp:null,skipping:false};
+  S.deck=buildDeck(); // after S is set, so an online game uses its seed
+  S.log=isMe(S.cur)?'You go first.':`${P(S.cur)} goes first.`;
+  S.screen=net?(S.cur===S.seat?'play':'ai'):ai?'play':'pass';
   draw(S.pl[0]);draw(S.pl[1]);render();
 }
 function draw(p){
@@ -453,10 +488,11 @@ function takeSel(){const c=me().hand.splice(S.sel,1)[0];return c}
 function endTurn(){
   if(S.sim)return; // AI look-ahead: stop here
   draw(me());
-  if(healthy(me())>=4){S.screen='win';S.winner=S.cur;addWin(S.ai?'ai':'duo',S.cur);render();return}
-  S.cur=1-S.cur;S.sel=null;S.mode=null;S.tp=null;S.dsel.clear();S.skipping=false;
-  if(S.ai){
-    if(S.cur){S.screen='ai';render();const g=S;setTimeout(()=>{if(S===g)aiTurn()},600);return}
+  if(healthy(me())>=4){S.screen='win';S.winner=S.cur;addWin(statMode(),S.online?(isMe(S.cur)?0:1):S.cur);render();return}
+  S.cur=1-S.cur;S.turn++;S.sel=null;S.mode=null;S.tp=null;S.dsel.clear();S.skipping=false;
+  if(S.ai||S.online){
+    // 'ai' screen = the other side (computer or online rival) is playing
+    if(!isMe(S.cur)){S.screen='ai';render();if(S.ai){const g=S;setTimeout(()=>{if(S===g)aiTurn()},600)}return}
     S.screen='play';const p=me();if(p.skip){p.skip=false;S.skipping=true}
     return render();
   }
@@ -469,10 +505,10 @@ function playOnSlot(owner,i){
   const n=P(S.cur),on=P(1-S.cur),m=me(),o=opp();
   if(c.type==='transplant'||c.kind==='transplant'){
     if(S.tp===null){S.tp=i;render();return}
-    takeSel();const a=m.body[S.tp],b=o.body[i];m.body[S.tp]=b;o.body[i]=a;S.discard.push(c);
+    share({mv:{i:S.sel,tp:S.tp,slot:[owner,i]}});takeSel();const a=m.body[S.tp],b=o.body[i];m.body[S.tp]=b;o.body[i]=a;S.discard.push(c);
     S.log=`${n} swapped ${their(S.cur)} ${orgLabel(a)} for ${poss(1-S.cur)} ${orgLabel(b)}.`;return endTurn();
   }
-  takeSel();
+  share({mv:{i:S.sel,slot:[owner,i]}});takeSel();
   if(c.kind==='thief'){const s=o.body.splice(i,1)[0];m.body.push(s);S.discard.push(c);S.log=`${n} stole ${poss(1-S.cur)} ${orgLabel(s)}.`;return endTurn()}
   if(c.type==='virus'){
     const s=o.body[i];
@@ -487,6 +523,7 @@ function playOnSlot(owner,i){
   endTurn();
 }
 function useCard(){
+  share({mv:{i:S.sel,use:1}});
   const c=takeSel(),n=P(S.cur),on=P(1-S.cur),m=me(),o=opp();
   if(c.type==='organ'){m.body.push({card:c,v:[],m:[]});S.log=`${n} added a ${ORG[c.color].toLowerCase()}.`;return endTurn()}
   S.discard.push(c);
@@ -498,7 +535,7 @@ function useCard(){
       if(t){t.v.push(s.v.pop());moved++}
     });
     S.log=moved?`${n} spread ${moved} virus${moved>1?'es':''} to ${obj(1-S.cur)}.`:`${n} played contagion, but nothing spread.`;
-  }else if(c.kind==='glove'){S.discard.push(...o.hand);o.hand=[];o.skip=true;S.log=`${n} used a latex glove. ${S.ai&&S.cur?'You lose your hand and miss':`${on} loses ${S.ai?'its':'their'} hand and misses`} a turn.`}
+  }else if(c.kind==='glove'){S.discard.push(...o.hand);o.hand=[];o.skip=true;S.log=`${n} used a latex glove. ${isMe(1-S.cur)?'You lose your hand and miss':`${on} loses ${their(1-S.cur)} hand and misses`} a turn.`}
   else if(c.kind==='error'){[m.body,o.body]=[o.body,m.body];S.log=`${n} swapped whole bodies with ${obj(1-S.cur)}!`}
   endTurn();
 }
@@ -534,7 +571,9 @@ function aiPlan(){
   if(!idx.length)idx=[Math.max(0,p.hand.findIndex(c=>c.color!=='wild'))];
   return {discard:idx};
 }
+// Carry out a plan. Also used for human discards and skips, so online games can send them.
 function aiExec(pl){
+  if(!pl.mv)share(pl);
   const p=me();
   if(pl.skip){p.skip=false;S.log=`${P(S.cur)} missed a turn and drew a new hand.`;return endTurn()}
   if(pl.mv)return doMove(pl.mv);
@@ -635,7 +674,123 @@ function flipFrom(before,root,pop){
   });
 }
 
+// ---- Online play ----
+// Trystero links the two browsers directly (WebRTC), finding each other through public Nostr relays.
+// No server or keys. Both browsers run the same game from the same seed and send each other only
+// their moves (same shape as the computer's plans), so the two copies stay in step.
+// The host picks a room name and deals; the guest joins with that name.
+const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
+const APP_ID='viral-duel-online-v1';
+const NET={room:null,msg:null,peer:null,host:false,code:'',first:0,q:Promise.resolve(),tok:0};
+// Room names: up to 8 letters/digits, uppercase. The last one typed is remembered.
+const ROOM_KEY='viralDuelRoom',ROOM_MAX=8;
+const cleanRoom=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,ROOM_MAX);
+function loadRoom(){try{return cleanRoom(localStorage.getItem(ROOM_KEY))}catch(e){return ''}}
+function saveRoom(r){try{localStorage.setItem(ROOM_KEY,r)}catch(e){}}
+function lobbyStatus(t){if(S.screen==='lobby'){S.status=t;render()}}
+// Send a message to the rival; a send to a rival who just left fails quietly
+function tx(data){
+  if(!NET.msg||!NET.peer)return;
+  try{const p=NET.msg.send(data,{target:NET.peer});if(p&&p.catch)p.catch(()=>{})}catch(e){}
+}
+// Send a move to the rival, but only for our own turn (moves we replay from the rival aren't echoed)
+function share(pl){
+  if(S.online&&!S.sim&&isMe(S.cur))tx({k:'move',g:S.gid,t:S.turn,pl:JSON.parse(JSON.stringify(pl))});
+}
+function netLeave(){
+  NET.tok++; // cancels a join that is still loading
+  if(NET.room){tx({k:'bye'});NET.room.leave()}
+  NET.room=NET.msg=NET.peer=null;NET.q=Promise.resolve();
+}
+async function netOpen(code,host){
+  netLeave();
+  const tok=NET.tok;
+  Object.assign(NET,{code,host,first:0});
+  S={screen:'lobby',host,status:'Connecting…'};render();
+  // Trystero needs the browser's crypto API (https:// pages and localhost only)
+  if(!isSecureContext)return lobbyStatus('Online play isn’t available on this page.');
+  let lib;
+  try{lib=await import(TRYSTERO)}catch(e){return lobbyStatus('Couldn’t load online play. Check your internet connection and try again.')}
+  if(tok!==NET.tok)return; // cancelled while loading
+  const room=NET.room=lib.joinRoom({appId:APP_ID},code);
+  NET.msg=room.makeAction('msg');
+  lobbyStatus(host?'Waiting for your friend to join…':'Looking for the game…');
+  if(!host)setTimeout(()=>{if(NET.room===room&&S.screen==='lobby'&&!NET.peer)lobbyStatus('Still looking… Check the room name, and that your friend has created the game and is still waiting.')},20000);
+  room.onPeerJoin=id=>{
+    if(NET.room!==room||NET.peer)return; // one rival only
+    if(host){NET.peer=id;netDeal()}
+    else lobbyStatus('Found it. Starting…');
+  };
+  room.onPeerLeave=id=>{if(NET.room===room&&id===NET.peer)rivalLeft()};
+  NET.msg.onMessage=(m,{peerId})=>{if(NET.room===room)netGet(m,peerId)};
+}
+// Host: start a game (or rematch). Who goes first alternates.
+function netDeal(){
+  const seed=Math.random()*4294967296|0,first=NET.first;NET.first=1-first;
+  tx({k:'start',seed,first});
+  NET.q=Promise.resolve();
+  newGame(false,{seat:0,seed,first});
+}
+function netGet(m,id){
+  if(m.k==='start'){
+    // A host getting a deal means two people created the same room
+    if(NET.host){if(!NET.peer||id===NET.peer)roomTaken();return}
+    if(NET.peer&&NET.peer!==id)return;
+    NET.peer=id;NET.q=Promise.resolve();
+    return newGame(false,{seat:1,seed:m.seed,first:m.first});
+  }
+  if(id!==NET.peer)return;
+  if(m.k==='again'&&NET.host)return netDeal();
+  if(m.k==='bye')return rivalLeft();
+  if(m.k==='move')NET.q=NET.q.then(()=>remoteTurn(m)).catch(e=>console.error(e));
+}
+function rivalLeft(){
+  NET.peer=null;
+  if(!S.online||S.screen==='gone')return;
+  if(S.screen!=='win')S.screen='gone'; // the win screen stays, without the rematch button
+  document.querySelectorAll('.fly').forEach(e=>e.remove());render();
+}
+// Play the rival's move with the same animations as the computer's
+async function remoteTurn(m){
+  const g=S,ok=()=>S===g&&S.online&&S.gid===m.g&&S.turn===m.t&&!isMe(S.cur)&&(S.screen==='ai'||S.screen==='quit');
+  if(!ok())return;
+  while(S.screen==='quit')await wait(300);
+  if(!ok())return;
+  const pl=m.pl;
+  await animatePlan(pl);
+  while(S.screen==='quit')await wait(300);
+  if(!ok())return;
+  S.landed=!!(pl.mv&&me().hand[pl.mv.i].type==='organ');
+  aiExec(pl);
+  if(pl.el)fadeOut(pl.el);
+}
+function roomTaken(){
+  netLeave();
+  document.querySelectorAll('.fly').forEach(e=>e.remove());
+  S={screen:'online',form:'host',err:'Someone else created a game with this room name. Try another name.'};render();
+}
+addEventListener('pagehide',()=>netLeave());
+
 // ---- Render ----
+// Main menu icons (styled by .mode svg)
+const ICON={
+  robot:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V5"/><circle class="dot" cx="12" cy="3.5" r="1.5"/><circle class="dot" cx="9" cy="13" r="1.4"/><circle class="dot" cx="15" cy="13" r="1.4"/><path d="M9.5 16.5h5"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2" width="11" height="20" rx="2.5"/><path d="M10.5 18.5h3"/></svg>',
+  globe:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>',
+  sun:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
+};
+// Light/dark mode. No saved choice = follow the device (the CSS handles that).
+// Picking the same mode as the device clears the saved choice, so it follows the device again.
+const THEME_KEY='viralDuelTheme',sysDark=matchMedia('(prefers-color-scheme: dark)');
+const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==='dark':sysDark.matches};
+function setTheme(dark){
+  const root=document.documentElement;
+  if(dark===sysDark.matches)delete root.dataset.theme;else root.dataset.theme=dark?'dark':'light';
+  try{root.dataset.theme?localStorage.setItem(THEME_KEY,root.dataset.theme):localStorage.removeItem(THEME_KEY)}catch(e){}
+}
+const themeSwitch=()=>`<button class="theme" data-a="theme" role="switch" aria-checked="${isDark()}" aria-label="Dark mode">${ICON.sun}<span class="track"></span>${ICON.moon}</button>`;
+sysDark.addEventListener('change',()=>{if(S.screen==='start')render()}); // keep the switch in step when the device flips
 function slotHTML(s,owner,i,T){
   const st=s.v.length?'infected':immune(s)?'immune':s.m.length?'vaccinated':'healthy';
   const tgt=(owner===0?T.mine:T.opp).includes(i),picked=owner===0&&S.tp===i;
@@ -662,7 +817,7 @@ const legendName=c=>c.type==='treat'?TREAT[c.kind].n:c.color==='wild'?'Wild':ORG
 const DECK_SIZE=LEGEND.reduce((s,g)=>s+g.cards.reduce((t,x)=>t+x.n,0),0);
 function render(){
   const app=document.getElementById('app');
-  if(S.screen==='start'){app.innerHTML=`<div class="overlay"><div class="germs">${[{type:'organ',color:'red'},{type:'virus',color:'blue'},{type:'med',color:'green'},{type:'treat',color:'treat',kind:'glove'}].map(c=>cardSVG(c)).join('')}</div><h1>Viral Duel</h1><p>Build four healthy organs before your rival does. Play the computer, or pass the phone to a friend.</p><button data-a="start1">1 player vs computer</button><button data-a="start2">2 players, one phone</button><button class="ghost" data-a="rules">How to play</button><button class="ghost" data-a="stats">Win stats</button></div>`;return}
+  if(S.screen==='start'){app.innerHTML=`<div class="overlay"><div class="germs">${[{type:'organ',color:'red'},{type:'virus',color:'blue'},{type:'med',color:'green'},{type:'treat',color:'treat',kind:'glove'}].map(c=>cardSVG(c)).join('')}</div><h1>Viral Duel</h1><p>Build four healthy organs before your rival does. Play the computer, pass the phone to a friend, or play a friend online.</p><button class="mode" data-a="start1">${ICON.robot}1 player vs computer</button><button class="mode" data-a="start2">${ICON.phone}2 players, one phone</button><button class="mode online" data-a="online">${ICON.globe}2 players, online</button><button class="ghost" data-a="rules">How to play</button><button class="ghost" data-a="stats">Win stats</button>${themeSwitch()}</div>`;return}
   if(S.screen==='rules'){app.innerHTML=`<div class="overlay top howto"><h1>How to play</h1><p class="deck-size">The deck: ${DECK_SIZE} cards</p><div class="legend">${LEGEND.map(g=>`<h2>${g.t}</h2>`+g.cards.map(({c,n})=>`<figure>${cardSVG(c)}<figcaption>${legendName(c)}<b>×${n}</b></figcaption></figure>`).join('')).join('')}</div><ol class="rules">
     <li>The badge in a virus or medicine corner shows which organ it fits.</li>
     <li>Win by having 4 healthy organs at the end of your turn.</li>
@@ -673,18 +828,29 @@ function render(){
     <li>Viruses and medicine must match the organ’s color, unless one is wild.</li>
     <li>Treatments break the rules: swap, steal, spread, or wipe hands.</li></ol>
     <button data-a="back">Got it</button></div>`;return}
-  if(S.screen==='stats'){const st=loadStats();app.innerHTML=`<div class="overlay top"><h1>Win stats</h1>${statsCard('ai',st)}${statsCard('duo',st)}<button data-a="menu">Back</button></div>`;return}
-  if(S.screen==='quit'){app.innerHTML=`<div class="overlay"><h1>Exit game?</h1><p>This game will end and won’t count in the win stats.</p><button data-a="back">Keep playing</button><button class="ghost" data-a="menu">Exit to main menu</button></div>`;return}
+  if(S.screen==='stats'){const st=loadStats();app.innerHTML=`<div class="overlay top"><h1>Win stats</h1>${statsCard('ai',st)}${statsCard('duo',st)}${statsCard('net',st)}<button data-a="menu">Back</button></div>`;return}
+  if(S.screen==='online'){
+    // No form yet: pick Create or Join. Then: type the room name.
+    if(!S.form){app.innerHTML=`<div class="overlay"><h1>Play online</h1><p>Create a game and tell a friend the room name, or join the room a friend created.</p><button data-a="host">Create a game</button><button data-a="join">Join game</button><button class="ghost" data-a="menu">Back</button></div>`;return}
+    const host=S.form==='host';
+    app.innerHTML=`<div class="overlay"><h1>${host?'Create a game':'Join game'}</h1><p>${host?'Pick a room name, up to 8 letters or numbers. Tell your friend so they can join.':'Type the room name your friend created.'}</p>
+    <input id="code" class="code-in" maxlength="${ROOM_MAX}" placeholder="ROOM" value="${S.typed??loadRoom()}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Room name">
+    ${S.err?`<p class="err">${S.err}</p>`:''}<button data-a="go">${host?'Create':'Join'}</button><button class="ghost" data-a="online">Back</button></div>`;return}
+  if(S.screen==='lobby'){app.innerHTML=`<div class="overlay"><p class="label">Room name</p><h1 class="code">${NET.code}</h1><p aria-live="polite">${S.status}</p>
+    <button class="ghost" data-a="menu">Cancel</button></div>`;return}
+  if(S.screen==='gone'){app.innerHTML=`<div class="overlay"><h1>Rival left</h1><p>Your rival left the game.${NET.host?' If they come back to the same room, a new game starts.':''}</p><button data-a="menu">Main menu</button></div>`;return}
+  if(S.screen==='quit'){app.innerHTML=`<div class="overlay"><h1>Exit game?</h1><p>${S.online?'You’ll leave the online game, and it won’t count in the win stats.':'This game will end and won’t count in the win stats.'}</p><button data-a="back">Keep playing</button><button class="ghost" data-a="menu">Exit to main menu</button></div>`;return}
   if(S.screen==='pass'){app.innerHTML=`<div class="overlay"><p class="log">${S.log}</p><h1>Pass to ${P(S.cur)}</h1><p>Hand the phone over. Keep your cards hidden.</p><button data-a="reveal">I’m ${P(S.cur)}, show my cards</button><button class="ghost" data-a="quit">Exit game</button></div>`;return}
-  if(S.screen==='win'){app.innerHTML=`<div class="overlay"><div class="germs">${S.pl[S.winner].body.filter(s=>!s.v.length).map(s=>`<div class="won">${cardSVG(s.card)}<span class="tags">${s.m.map(x=>`<span>${mini(x)}</span>`).join('')}</span></div>`).join('')}</div><h1>${S.ai?(S.winner?'Computer wins':'You win!'):P(S.winner)+' wins!'}</h1><p>Four healthy organs. Perfect bill of health.</p>${(()=>{const mode=S.ai?'ai':'duo',w=loadStats()[mode],n=MODES[mode].n;return `<p class="tally">${n[0]} ${w[0]} · ${n[1]} ${w[1]}</p>`})()}<button data-a="again">Play again</button><button class="ghost" data-a="menu">Main menu</button></div>`;return}
+  if(S.screen==='win'){app.innerHTML=`<div class="overlay"><div class="germs">${S.pl[S.winner].body.filter(s=>!s.v.length).map(s=>`<div class="won">${cardSVG(s.card)}<span class="tags">${s.m.map(x=>`<span>${mini(x)}</span>`).join('')}</span></div>`).join('')}</div><h1>${S.ai||S.online?(isMe(S.winner)?'You win!':`${P(S.winner)} wins`):P(S.winner)+' wins!'}</h1><p>Four healthy organs. Perfect bill of health.</p>${(()=>{const mode=statMode(),w=loadStats()[mode],n=MODES[mode].n;return `<p class="tally">${n[0]} ${w[0]} · ${n[1]} ${w[1]}</p>`})()}${!S.online?'<button data-a="again">Play again</button>':NET.peer?'<button data-a="again">Rematch</button>':'<p>Your rival has left.</p>'}<button class="ghost" data-a="menu">Main menu</button></div>`;return}
 
   const hadBoard=!!app.querySelector('.body'),before=snap(app);
   const vi=view(),myTurn=vi===S.cur,m=S.pl[vi],o=S.pl[1-vi];
   const T=(S.mode==='discard'||!myTurn)?{mine:[],opp:[]}:targets();
   const dz=!!(S.dragging&&T.use),dzOpp=dz&&m.hand[S.sel].type==='treat';
-  let hint=!myTurn?'<span class="log2">Computer is thinking…</span>':S.skipping?'Your hand was thrown out. You miss this turn.':S.mode==='discard'?'Tap cards to throw away, then confirm.':S.sel!==null?`<b>${cardName(me().hand[S.sel])}</b>. ${T.hint}`:(S.ai&&S.log?`<span class="log2">${S.log}</span>`:'');
+  const rival=S.online?'Rival':'Computer';
+  let hint=!myTurn?`<span class="log2">${rival} is thinking…</span>`:S.skipping?'Your hand was thrown out. You miss this turn.':S.mode==='discard'?'Tap cards to throw away, then confirm.':S.sel!==null?`<b>${cardName(me().hand[S.sel])}</b>. ${T.hint}`:((S.ai||S.online)&&S.log?`<span class="log2">${S.log}</span>`:'');
   let acts;
-  if(!myTurn)acts=`<button disabled>Computer’s turn</button>`;
+  if(!myTurn)acts=`<button disabled>${rival}’s turn</button>`;
   else if(S.skipping)acts=`<button data-a="skipEnd">End turn</button>`;
   else if(S.mode==='discard')acts=`<button class="ghost" data-a="cancel">Cancel</button><button data-a="discardGo" ${S.dsel.size?'':'disabled'}>Discard ${S.dsel.size||''}</button>`;
   else acts=`<button class="ghost" data-a="discardMode">Discard several cards</button>`;
@@ -692,7 +858,7 @@ function render(){
   <section class="zone ${dzOpp?'dropzone':''}" ${dzOpp?'data-drop="use"':''}><h2>${P(1-vi)} <span>${healthy(o)}/4 healthy<span class="backs" aria-label="${o.hand.length} cards in hand">${'<i></i>'.repeat(o.hand.length)}</span></span></h2>
     <div class="body ${o.body.length>4?'five':''}">${o.body.length?o.body.map((s,i)=>slotHTML(s,1,i,T)).join(''):'<span class="empty">No organs yet</span>'}</div></section>
   <div class="mid"><div class="pile"><b>${S.deck.length}</b>deck</div><div class="hint" aria-live="polite">${hint}</div><div class="pile bin ${S.dragging?'dropzone':''}" data-drop="bin"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>discard</div><button class="ghost qbtn" data-a="quit" aria-label="Exit game"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-  <section class="zone mine ${dz?'dropzone':''}" ${dz?'data-drop="use"':''}><h2>${S.ai?'You':'You, '+P(vi)} <span>${healthy(m)}/4 healthy</span></h2>
+  <section class="zone mine ${dz?'dropzone':''}" ${dz?'data-drop="use"':''}><h2>${S.ai||S.online?'You':'You, '+P(vi)} <span>${healthy(m)}/4 healthy</span></h2>
     <div class="body ${m.body.length>4?'five':''}">${m.body.length?m.body.map((s,i)=>slotHTML(s,0,i,T)).join(''):'<span class="empty">Play organs here</span>'}</div></section>
   <div class="hand">${m.hand.map(handHTML).join('')}</div>
   <div class="actions">${acts}</div>`;
@@ -710,14 +876,29 @@ function render(){
 function onAct(t){
   const a=t.dataset.a,i=+t.dataset.i;
   if(a==='start1'||a==='start2'){newGame(a==='start1');return}
-  if(a==='again'){newGame(S.ai);return}
-  if(a==='menu'){S={screen:'start'};document.querySelectorAll('.fly').forEach(e=>e.remove());return render()} // also clear any computer-move animation
+  if(a==='again'){
+    if(!S.online)return newGame(S.ai);
+    if(!NET.peer)return;
+    if(NET.host)return netDeal();
+    tx({k:'again'}); // the host deals the rematch
+    t.disabled=true;t.textContent='Starting…';return;
+  }
+  if(a==='menu'){netLeave();S={screen:'start'};document.querySelectorAll('.fly').forEach(e=>e.remove());return render()} // also clear any computer-move animation
+  if(a==='online'){S={screen:'online'};return render()}
+  if(a==='theme'){setTheme(!isDark());return t.setAttribute('aria-checked',isDark())} // no re-render, so keyboard focus stays put
+  if(a==='host'||a==='join'){S={screen:'online',form:a};render();return document.getElementById('code').focus()}
+  if(a==='go'){
+    const host=S.form==='host',code=cleanRoom(document.getElementById('code').value);
+    if(!code){S.typed='';S.err='Type a room name, using letters and numbers.';render();return document.getElementById('code').focus()}
+    saveRoom(code);
+    return netOpen(code,host);
+  }
   if(a==='stats'){S={screen:'stats'};return render()}
   if(a==='reset'){const m=t.dataset.m;if(S.confirm===m){resetStats(m);S.confirm=null}else S.confirm=m;return render()}
   if(a==='rules'||a==='quit'){S.prev=S.screen;S.screen=a;return render()}
   if(a==='back'){S.screen=S.prev||'start';return render()}
   if(a==='reveal'){S.screen='play';const p=me();if(p.skip){p.skip=false;S.skipping=true}return render()}
-  if(a==='skipEnd'){S.log=`${P(S.cur)} missed a turn and drew a new hand.`;return endTurn()}
+  if(a==='skipEnd')return aiExec({skip:1});
   if(S.skipping)return;
   if(a==='hand'){
     if(S.mode==='discard'){S.dsel.has(i)?S.dsel.delete(i):S.dsel.add(i)}
@@ -728,10 +909,7 @@ function onAct(t){
   if(a==='use')return useCard();
   if(a==='discardMode'){S.mode='discard';S.sel=null;S.tp=null;S.dsel.clear();return render()}
   if(a==='cancel'){S.mode=null;S.dsel.clear();return render()}
-  if(a==='discardGo'){
-    const n=S.dsel.size;[...S.dsel].sort((x,y)=>y-x).forEach(k=>S.discard.push(...me().hand.splice(k,1)));
-    S.mode=null;S.dsel.clear();S.log=`${P(S.cur)} discarded ${n} card${n>1?'s':''}.`;return endTurn();
-  }
+  if(a==='discardGo'){const idx=[...S.dsel];S.mode=null;S.dsel.clear();return aiExec({discard:idx})}
 }
 // ---- Long-press tooltip ----
 function info(c){
@@ -803,7 +981,7 @@ function endDrag(e,cancel){
   const t=cancel?null:dropTarget(e.clientX,e.clientY);
   if(t&&t.classList.contains('slot'))return playOnSlot(+t.dataset.o,+t.dataset.i);
   if(t&&t.dataset.drop==='use')return useCard();
-  if(t&&t.dataset.drop==='bin'){S.discard.push(me().hand.splice(d.i,1)[0]);S.log=`${P(S.cur)} discarded 1 card.`;return endTurn()}
+  if(t&&t.dataset.drop==='bin')return aiExec({discard:[d.i]});
   // Missed: keep a half-done transplant, otherwise drop the selection
   if(!(S.tp!==null&&S.sel===d.i)){S.sel=null;S.tp=null}
   render();
@@ -812,7 +990,7 @@ document.addEventListener('pointerup',e=>endDrag(e,false));
 document.addEventListener('pointercancel',e=>endDrag(e,true));
 document.addEventListener('lostpointercapture',e=>endDrag(e,true),true);
 document.addEventListener('click',e=>{if(lpFired||dragEnded){lpFired=false;dragEnded=false;return}const t=e.target.closest('[data-a]');if(t)onAct(t)});
-document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.a&&e.target.tagName!=='BUTTON'){e.preventDefault();onAct(e.target)}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='code'){e.preventDefault();return onAct($('[data-a="go"]'))}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.a&&e.target.tagName!=='BUTTON'){e.preventDefault();onAct(e.target)}});
 S={screen:'start'};render();
 </script>
 </body>
