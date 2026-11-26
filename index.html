@@ -409,6 +409,36 @@ function statsCard(mode,st){
     <button class="${sure?'warn':'ghost'}" data-a="reset" data-m="${mode}" ${n?'':'disabled'}>${sure?'Tap again to reset':'Reset'}</button></section>`;
 }
 
+// ---- Saved game ----
+// A game on this device (vs computer or 2 players, one phone) is saved after every change,
+// so closing the tab or a crash doesn't lose it. Opening the page again resumes it.
+// Online games aren't saved: the rival's browser can't resume with us.
+const SAVE_KEY='viralDuelGame',SAVE_VER=1;
+function saveGame(){
+  if(!S||!S.pl||S.online||S.sim)return;
+  if(S.screen==='win')return clearGame(); // finished games don't resume
+  // Only the game itself; selection, drag and discard picks start fresh after a reload
+  const g={v:SAVE_VER,ai:S.ai,deck:S.deck,discard:S.discard,pl:S.pl,cur:S.cur,turn:S.turn,log:S.log,skipping:S.skipping};
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(g))}catch(e){}
+}
+function clearGame(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
+function loadGame(){
+  try{
+    const g=JSON.parse(localStorage.getItem(SAVE_KEY)),A=Array.isArray;
+    // Check the shape so a damaged save is dropped instead of breaking the game later
+    const good=g&&g.v===SAVE_VER&&(g.cur===0||g.cur===1)&&A(g.deck)&&A(g.discard)&&A(g.pl)&&g.pl.length===2&&g.pl.every(p=>p&&A(p.hand)&&A(p.body));
+    return good?g:null;
+  }catch(e){return null}
+}
+function resumeGame(g){
+  S={ai:!!g.ai,online:false,seat:0,gid:0,rs:null,deck:g.deck,discard:g.discard,pl:g.pl,cur:g.cur,turn:g.turn,log:g.log,
+    sel:null,mode:null,dsel:new Set(),tp:null,skipping:!!g.skipping,
+    // vs computer: back to whoever's turn it was. 2 players: the pass screen, so the next player's cards stay hidden.
+    screen:g.ai?(g.cur===1?'ai':'play'):'pass'};
+  render();
+  if(S.screen==='ai'){const s=S;setTimeout(()=>{if(S===s)aiTurn()},600)} // computer replays its interrupted turn
+}
+
 // ---- Game state ----
 let S;
 // Online games share a seed so both browsers shuffle the same way (S.rs is the seeded generator's state)
@@ -848,6 +878,7 @@ const LEGEND=(()=>{
 const legendName=c=>c.type==='treat'?TREAT[c.kind].n:c.color==='wild'?'Wild':ORG[c.color];
 const DECK_SIZE=LEGEND.reduce((s,g)=>s+g.cards.reduce((t,x)=>t+x.n,0),0);
 function render(){
+  saveGame(); // every state change redraws, so this keeps the save current
   const app=document.getElementById('app');
   if(S.screen==='start'){app.innerHTML=`<div class="overlay"><div class="germs">${[{type:'organ',color:'red'},{type:'virus',color:'blue'},{type:'med',color:'green'},{type:'treat',color:'treat',kind:'glove'}].map(c=>cardSVG(c)).join('')}</div><h1>Viral Duel</h1><p>Build four healthy organs before your rival does. Play the computer, pass the phone to a friend, or play a friend online.</p><button class="mode" data-a="start1">${ICON.robot}1 player vs computer</button><button class="mode" data-a="start2">${ICON.phone}2 players, one phone</button><button class="mode online" data-a="online">${ICON.globe}2 players, online</button><button class="ghost" data-a="rules">How to play</button><button class="ghost" data-a="stats">Win stats</button>${themeSwitch()}</div>`;return}
   if(S.screen==='rules'){app.innerHTML=`<div class="overlay top howto"><h1>How to play</h1><p class="deck-size">The deck: ${DECK_SIZE} cards</p><div class="legend">${LEGEND.map(g=>`<h2>${g.t}</h2>`+g.cards.map(({c,n})=>`<figure>${cardSVG(c)}<figcaption>${legendName(c)}<b>×${n}</b></figcaption></figure>`).join('')).join('')}</div><ol class="rules">
@@ -916,7 +947,7 @@ function onAct(t){
     tx({k:'again'}); // the host deals the rematch
     t.disabled=true;t.textContent='Starting…';return;
   }
-  if(a==='menu'){netLeave();S={screen:'start'};document.querySelectorAll('.fly').forEach(e=>e.remove());return render()} // also clear any computer-move animation
+  if(a==='menu'){netLeave();clearGame();S={screen:'start'};document.querySelectorAll('.fly').forEach(e=>e.remove());return render()} // also clear any computer-move animation
   if(a==='online'){S={screen:'online'};return render()}
   if(a==='theme'){setTheme(!isDark());return t.setAttribute('aria-checked',isDark())} // no re-render, so keyboard focus stays put
   if(a==='host'||a==='join'){S={screen:'online',form:a};render();return document.getElementById('code').focus()}
@@ -1050,7 +1081,12 @@ function filterRoomInput(e){
 document.addEventListener('input',filterRoomInput);
 document.addEventListener('compositionend',filterRoomInput);
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='code'){e.preventDefault();return onAct($('[data-a="go"]'))}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.a&&e.target.tagName!=='BUTTON'){e.preventDefault();onAct(e.target)}});
-S={screen:'start'};render();
+// Resume a saved game if there is one; a broken save is dropped and the menu shows instead
+(()=>{
+  const g=loadGame();
+  if(g)try{return resumeGame(g)}catch(e){console.error(e)}
+  clearGame();S={screen:'start'};render();
+})();
 </script>
 </body>
 </html>
