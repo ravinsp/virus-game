@@ -73,7 +73,7 @@ button{font:inherit;font-weight:700;font-size:16px;border:2px solid transparent;
 button.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
 button:disabled{opacity:.4}
 button:focus-visible,.hcard:focus-visible,.slot:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
-.overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;z-index:5;overflow:auto}
+.overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;z-index:30;overflow:auto} /* above flying cards (20) */
 .overlay h1{font-size:44px;line-height:1;margin:0 0 10px;font-weight:800;letter-spacing:-.5px}
 .overlay p{max-width:32ch;margin:0 0 22px;color:var(--muted);font-size:17px;line-height:1.35}
 .overlay .log{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
@@ -360,8 +360,13 @@ const MINI_VIRUS={
     s+=`M10 10L${x} ${y}L${n1(10+8.8*Math.cos(a-.35))} ${n1(10+8.8*Math.sin(a-.35))}M${x} ${y}L${n1(10+8.8*Math.cos(a+.35))} ${n1(10+8.8*Math.sin(a+.35))}`}
     return `<path d="${s}" stroke="${f}" stroke-width="1.3" fill="none" stroke-linecap="round"/><circle cx="10" cy="10" r="4" fill="${f}"/><circle cx="10" cy="9.6" r="1.6" fill="#fff"/>`},
   green:f=>`<path d="M4 17C3 11 14 13 12 8C11 5.5 12.5 4 14.5 4" stroke="${f}" stroke-width="3.2" fill="none" stroke-linecap="round"/><circle cx="15" cy="4.5" r="2.8" fill="${f}"/>`,
-  yellow:f=>{const p=[];for(let k=0;k<16;k++){const a=k*Math.PI/8,r=k%2?6:9;p.push(n1(10+r*Math.cos(a))+' '+n1(10+r*Math.sin(a)))}
-    return `<path d="M${p.join('L')}Z" fill="${f}"/><ellipse cx="10" cy="11.5" rx="2.6" ry="2.2" fill="#fff"/>`}
+  // Bone beetle: round head with antennae, chubby body, hugging a white bone
+  yellow:f=>{
+    // Bone drawn twice: thicker colored pass as its outline, then white on top
+    const bone=(c,o)=>`<path d="M5 12.5h10" stroke="${c}" stroke-width="${1.8+o*2}"/><g fill="${c}">${[[4.3,11.6],[4.3,13.4],[15.7,11.6],[15.7,13.4]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="${1.2+o}"/>`).join('')}</g>`;
+    return `<g stroke="${f}" fill="none" stroke-linecap="round"><path d="M8.3 4.3Q7 2 4.8 1.8M11.7 4.3Q13 2 15.2 1.8" stroke-width="1"/><path d="M5.5 15.5L2.5 14.5M5.5 17.5L3 19M14.5 15.5L17.5 14.5M14.5 17.5L17 19" stroke-width="1.4"/></g>
+    <g fill="${f}"><circle cx="4.8" cy="1.8" r="1.2"/><circle cx="15.2" cy="1.8" r="1.2"/><ellipse cx="10" cy="15" rx="5.8" ry="4.5"/><circle cx="10" cy="7.5" r="4"/></g>
+    <g fill="#fff"><circle cx="8.6" cy="7.2" r="1"/><circle cx="11.4" cy="7.2" r="1"/></g>${bone(f,.6)}${bone('#fff',0)}`}
 };
 // Tiny silhouettes of each medicine
 const MINI_MED={
@@ -624,29 +629,56 @@ async function animatePlan(pl){
   else to=cardBox(rect($('.mid')),sw*1.3);
   // 1. The played card flies out face up
   // Keep the card on screen until the board redraws underneath it
+  const g=S;
   pl.el=await fly(cardSVG(c),srcRect(mv.i),to,{dur:700,hold:c.type==='treat'?450:120,keep:true});
+  if(S!==g||!$('.bin'))return; // game ended, or the exit dialog covers the board
   // 2. Viruses or hand cards move (swaps and steals slide in the redraw)
-  const k=c.kind,jobs=[];
-  if(k==='contagion'){
-    // Same pairing as useCard: each infected organ passes its virus to one clean match
-    const used=new Set();
-    me().body.forEach((s,i)=>{
-      if(s.v.length!==1||s.m.length)return;
-      const j=opp().body.findIndex((b,jj)=>!used.has(jj)&&!b.v.length&&!b.m.length&&matches(s.v[0],b));
-      if(j<0)return;used.add(j);
-      jobs.push(fly(mini(s.v[0]),sq(rect(slotEl(1,i)),26),sq(rect(slotEl(0,j)),26),{cls:'flymini',dur:750,hold:150}));
-    });
-  }else if(k==='glove'){
+  const k=c.kind;let jobs=[];
+  if(k==='contagion')jobs=flyContagion(1,0);
+  else if(k==='glove'){
     document.querySelectorAll('.hcard').forEach((h,n)=>{const r=rect(h);jobs.push(wait(n*120).then(()=>fly(h.innerHTML,r,cardBox(bin,24),{dur:550})));hide(h)});
   }
   await Promise.all(jobs);
+}
+// Contagion: fly each virus from the player's organ to the rival organ it will land on.
+// from/to = which side of the screen (data-o) the player and the rival are on.
+function flyContagion(from,to){
+  // Same pairing as useCard: each infected organ passes its virus to one clean match
+  const used=new Set(),jobs=[];
+  me().body.forEach((s,i)=>{
+    if(s.v.length!==1||s.m.length)return;
+    const j=opp().body.findIndex((b,jj)=>!used.has(jj)&&!b.v.length&&!b.m.length&&matches(s.v[0],b));
+    if(j<0)return;used.add(j);
+    const src=slotEl(from,i),dst=slotEl(to,j);
+    if(!src||!dst)return; // board not on screen (e.g. exit dialog open): nothing to animate
+    const tag=src.querySelector('.tags span');if(tag)tag.style.visibility='hidden'; // the virus leaves its organ
+    jobs.push(fly(mini(s.v[0]),sq(rect(src),26),sq(rect(dst),26),{cls:'flymini',dur:750,hold:150}));
+  });
+  return jobs;
+}
+// You play a card on the board. Contagion animates first, with input locked meanwhile.
+async function playerUse(){
+  const c=me().hand[S.sel];
+  if(c.kind!=='contagion')return useCard();
+  const g=S;
+  S.anim=true;render();
+  document.querySelector(`.hcard[data-i="${S.sel}"]`)?.style.setProperty('visibility','hidden'); // card is played
+  try{await Promise.all(flyContagion(0,1))}catch(e){console.error(e)}
+  if(S!==g)return;
+  S.anim=false;
+  if(S.screen!=='play')return; // rival left meanwhile: keep the "Rival left" screen
+  useCard();
+}
+// Show a move's animation, but never let a drawing problem stop the move itself
+async function safeAnimate(pl){
+  try{await animatePlan(pl)}catch(e){console.error(e);if(pl.el){pl.el.remove();pl.el=null}}
 }
 async function aiTurn(){
   const g=S;
   while(S.screen==='rules'||S.screen==='quit')await wait(300);
   if(S!==g||S.screen!=='ai'||S.cur!==1)return;
   const pl=aiPlan();
-  await animatePlan(pl);
+  await safeAnimate(pl);
   while(S.screen==='rules'||S.screen==='quit')await wait(300);
   if(S!==g)return;
   S.landed=!!(pl.mv&&me().hand[pl.mv.i].type==='organ'); // card already flew in, no pop
@@ -757,7 +789,7 @@ async function remoteTurn(m){
   while(S.screen==='quit')await wait(300);
   if(!ok())return;
   const pl=m.pl;
-  await animatePlan(pl);
+  await safeAnimate(pl);
   while(S.screen==='quit')await wait(300);
   if(!ok())return;
   S.landed=!!(pl.mv&&me().hand[pl.mv.i].type==='organ');
@@ -875,6 +907,7 @@ function render(){
 // ---- Input ----
 function onAct(t){
   const a=t.dataset.a,i=+t.dataset.i;
+  if(S.anim||S.dragging)return; // your contagion is still flying, or another finger is dragging a card
   if(a==='start1'||a==='start2'){newGame(a==='start1');return}
   if(a==='again'){
     if(!S.online)return newGame(S.ai);
@@ -906,7 +939,7 @@ function onAct(t){
     return render();
   }
   if(a==='slot'&&S.sel!==null&&S.mode!=='discard')return playOnSlot(+t.dataset.o,i);
-  if(a==='use')return useCard();
+  if(a==='use')return playerUse();
   if(a==='discardMode'){S.mode='discard';S.sel=null;S.tp=null;S.dsel.clear();return render()}
   if(a==='cancel'){S.mode=null;S.dsel.clear();return render()}
   if(a==='discardGo'){const idx=[...S.dsel];S.mode=null;S.dsel.clear();return aiExec({discard:idx})}
@@ -926,6 +959,8 @@ function info(c){
 const STATUS={healthy:'Healthy.',infected:'Infected: one more virus destroys it.',vaccinated:'Vaccinated: blocks one virus.',immune:'Immune: nothing can affect it.'};
 const tip=document.createElement('div');tip.className='tip';document.body.appendChild(tip);
 let lpTimer=null,lpFired=false,lpX=0,lpY=0;
+// A new press starts fresh. Phones often send no click after a long-press, so the flag must not wait for one.
+document.addEventListener('pointerdown',()=>{lpFired=false},true);
 function showTip(t){
   const i=+t.dataset.i;let c,extra='';
   if(t.classList.contains('hcard'))c=S.pl[view()].hand[i];
@@ -940,7 +975,7 @@ function showTip(t){
 function hideTip(){clearTimeout(lpTimer);tip.style.display='none'}
 document.addEventListener('pointerdown',e=>{
   const t=e.target.closest('.hcard,.slot');if(!t||(S.screen!=='play'&&S.screen!=='ai'))return;
-  lpFired=false;lpX=e.clientX;lpY=e.clientY;clearTimeout(lpTimer);
+  lpX=e.clientX;lpY=e.clientY;clearTimeout(lpTimer);
   lpTimer=setTimeout(()=>{if(!(D&&D.active)){lpFired=true;showTip(t)}},450);
 });
 // Finger wobble is ignored; only a real drag (below) cancels the hold
@@ -953,34 +988,47 @@ function dropTarget(x,y){
   const el=document.elementFromPoint(x,y);if(!el)return null;
   return el.closest('.slot.target')||el.closest('[data-drop]');
 }
+// Undo any half-finished drag: ghost, hover glow and the lifted card
+function clearDrag(){
+  D=null;document.querySelectorAll('.drag-ghost').forEach(g=>g.remove());
+  hoverEl&&hoverEl.classList.remove('hover');hoverEl=null;
+  if(S.dragging){S.dragging=false;if(S.screen==='play'||S.screen==='ai')render()}
+}
 document.addEventListener('pointerdown',e=>{
   const t=e.target.closest('.hcard');
-  if(!t||S.screen!=='play'||S.skipping||S.mode==='discard')return;
-  document.querySelectorAll('.drag-ghost').forEach(g=>g.remove()); // clear any stray ghost
+  if(D&&!e.isPrimary)return; // one drag at a time: a second finger is ignored
+  if(D||S.dragging)clearDrag(); // a fresh first touch means any old drag is stale, so drop it
+  if(!t||S.screen!=='play'||S.skipping||S.anim||S.mode==='discard')return;
   try{t.setPointerCapture(e.pointerId)}catch(_){}
-  D={i:+t.dataset.i,x:e.clientX,y:e.clientY,active:false,w:t.offsetWidth};
+  D={id:e.pointerId,i:+t.dataset.i,x:e.clientX,y:e.clientY,active:false,w:t.offsetWidth};
 });
 document.addEventListener('pointermove',e=>{
-  if(!D)return;
+  if(!D||e.pointerId!==D.id)return;
+  if(e.pointerType==='mouse'&&!e.buttons)return endDrag(e,true); // the mouse-up was missed (e.g. released outside the window)
   if(!D.active){
     if(Math.hypot(e.clientX-D.x,e.clientY-D.y)<14)return;
+    const c=me().hand[D.i];
+    if(!c||S.screen!=='play'||S.skipping||S.anim||S.mode==='discard'){D=null;return} // the game moved on since the press
     D.active=true;hideTip();
+    // Ghost first, so a failed redraw can't leave a drag with no ghost
+    D.g=document.createElement('div');D.g.className='drag-ghost';D.g.style.width=D.w+'px';
+    D.g.innerHTML=cardSVG(c);document.body.appendChild(D.g);
     if(S.sel!==D.i)S.tp=null;
     S.sel=D.i;S.dragging=true;render();
-    D.g=document.createElement('div');D.g.className='drag-ghost';D.g.style.width=D.w+'px';
-    D.g.innerHTML=cardSVG(me().hand[D.i]);document.body.appendChild(D.g);
   }
   D.g.style.left=e.clientX+'px';D.g.style.top=e.clientY+'px';
   const h=dropTarget(e.clientX,e.clientY);
   if(h!==hoverEl){hoverEl&&hoverEl.classList.remove('hover');hoverEl=h;h&&h.classList.add('hover')}
 });
 function endDrag(e,cancel){
-  if(!D)return;const d=D;D=null;
+  if(!D||e.pointerId!==D.id)return; // only the finger that started the drag can end it
+  const d=D;D=null;
   if(!d.active)return;
   d.g.remove();hoverEl=null;S.dragging=false;dragEnded=true;setTimeout(()=>dragEnded=false,60);
+  if(S.screen!=='play')return; // the screen changed under the drag (e.g. rival left)
   const t=cancel?null:dropTarget(e.clientX,e.clientY);
   if(t&&t.classList.contains('slot'))return playOnSlot(+t.dataset.o,+t.dataset.i);
-  if(t&&t.dataset.drop==='use')return useCard();
+  if(t&&t.dataset.drop==='use')return playerUse();
   if(t&&t.dataset.drop==='bin')return aiExec({discard:[d.i]});
   // Missed: keep a half-done transplant, otherwise drop the selection
   if(!(S.tp!==null&&S.sel===d.i)){S.sel=null;S.tp=null}
@@ -990,6 +1038,17 @@ document.addEventListener('pointerup',e=>endDrag(e,false));
 document.addEventListener('pointercancel',e=>endDrag(e,true));
 document.addEventListener('lostpointercapture',e=>endDrag(e,true),true);
 document.addEventListener('click',e=>{if(lpFired||dragEnded){lpFired=false;dragEnded=false;return}const t=e.target.closest('[data-a]');if(t)onAct(t)});
+// Room name box: drop anything that isn't a letter or digit as it's typed or pasted.
+// Case is left alone here (CSS shows it uppercase) so phone keyboards aren't disrupted mid-word.
+function filterRoomInput(e){
+  const el=e.target;if(el.id!=='code')return;
+  const v=el.value,ok=v.replace(/[^a-z0-9]/gi,'').slice(0,ROOM_MAX);
+  if(ok===v)return;
+  const caret=v.slice(0,el.selectionStart??v.length).replace(/[^a-z0-9]/gi,'').length; // keep the cursor where it was
+  el.value=ok;el.setSelectionRange(Math.min(caret,ok.length),Math.min(caret,ok.length));
+}
+document.addEventListener('input',filterRoomInput);
+document.addEventListener('compositionend',filterRoomInput);
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='code'){e.preventDefault();return onAct($('[data-a="go"]'))}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.a&&e.target.tagName!=='BUTTON'){e.preventDefault();onAct(e.target)}});
 S={screen:'start'};render();
 </script>

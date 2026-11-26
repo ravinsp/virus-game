@@ -64,7 +64,7 @@ Everything lives in [index.html](index.html). The script is plain JavaScript (no
 | **Render** | `render()` rebuilds the screen from `S` for each screen: `start`, `rules`, `stats`, `online`, `lobby`, `pass`, `play`, `ai` (the computer's or online rival's turn), `win`, `gone` (online rival left). |
 | **Input** | `onAct()` handles every button and tap, keyed by the element's `data-a` attribute. |
 | **Long-press tooltip** | Holding a card shows its name, effect (`info()`) and organ status. |
-| **Drag and drop** | Pointer events drag a hand card onto an organ, a zone, or the discard bin. |
+| **Drag and drop** | Pointer events drag a hand card onto an organ, a zone, or the discard bin. Only the finger that started a drag can move or end it; other touches are ignored until it ends. |
 
 ### Game state (`S`)
 
